@@ -11,7 +11,7 @@ void LoadBlocks(void);
 	uint24_t sprites;
 	uint24_t Pointer;
 	uint24_t data;
-	ti_var_t appvar
+	ti_var_t appvar;
 	
 	
 	
