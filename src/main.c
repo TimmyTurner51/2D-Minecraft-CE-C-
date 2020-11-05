@@ -29,7 +29,7 @@ void LoadBlocks(void);
 	sprites = ti_mAlloc(N);
 	x = 0;
 	While (x = data) {
-		{SPRITES+A} = Pointer;
+		{sprites + x} = Pointer;
 		Pointer = Pointer + spriteSize;
 		x += 3;
 		}
