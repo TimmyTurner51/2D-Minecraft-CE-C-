@@ -1,1 +1,30 @@
+output: c
 
+  include-file: gfx.h
+
+  palettes:
+
+    - mypalette
+
+  converts:
+
+    - sprites
+
+
+
+palette: mypalette
+
+  images: automatic
+
+
+
+convert: sprites
+
+  palette: mypalette
+  transparent-color-index: 0
+
+  images:
+
+    - dirt.png
+    - grass.png
+    
