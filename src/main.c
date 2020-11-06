@@ -40,7 +40,6 @@ void DrawMenu(void) {
   
 }
 
-					will this site thing stay up for more than a day, or a session, or whatever?
 
 void LoadBlocks(void) {
 	int x, spriteSize;
