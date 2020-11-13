@@ -1,0 +1,49 @@
+Segment  Base   Top    High   Length
+-------- ------ ------ ------ -------
+icon     D1A882 D1A9AB           129h
+launcher D1A9AB D1AA03            58h
+libs     D1AA03 D1AA56            53h
+startup  D1AA56 D1AA95            3Fh
+cleanup  D1AA95 D1AAA9            14h
+exit     D1AAA9 D1AAAF             6h
+code     D1AAAF D1AC42           193h
+data     D1AC42 D1AE64           222h
+strsect  D1AE64 D1AE6E             Ah
+text     D1AE6E D1AE6E             0h
+bss      D031F6 D03436 D13FD6    240h
+header   D1A87F D1A882             3h
+
+Label                           Value
+-----------------------------   ------
+_os_DisableHomeTextBuffer     = D1AAAF
+_os_EnableHomeTextBuffer      = D1AAC1
+__frameset                    = D1AAD3
+__imul_b                      = 000158
+__imul_b                      = 000150
+__stoiu                       = 000264
+__setflag                     = 000218
+__findlibload                 = D1A9AB
+__program_icon                = D1A887
+__program_description         = D1A989
+__ccleanup                    = D1AA95
+_errno                        = D008DC
+_init                         = D1A882
+_exit                         = D1AAAB
+__exit                        = D1AA84
+__exitsp                      = D1AA84
+__errsp                       = D1AA84
+_xlibc                        = D1AC64
+_DrawMenu                     = D1ABAC
+_main                         = D1AB39
+_loadTextures                 = D1AAE1
+_ti_CloseAll                  = D1AA17
+_ti_Open                      = D1AA1B
+_ti_GetSize                   = D1AA1F
+_ti_GetDataPtr                = D1AA23
+_gfx_Begin                    = D1AA30
+_gfx_End                      = D1AA34
+_gfx_SetPalette               = D1AA38
+_gfx_SetDraw                  = D1AA3C
+_gfx_Blit                     = D1AA40
+_gfx_TransparentSprite_NoClip = D1AA44
+_kb_Scan                      = D1AA52
