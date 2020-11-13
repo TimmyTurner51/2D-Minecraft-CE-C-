@@ -4,7 +4,7 @@ output: c
 
   palettes:
 
-    - mypalette
+    - xlibc
 
   converts:
 
@@ -12,7 +12,7 @@ output: c
 
 
 
-palette: mypalette
+palette: xlibc
 
   images: automatic
 
@@ -20,11 +20,8 @@ palette: mypalette
 
 convert: sprites
 
-  palette: mypalette
+  palette: xlibc
   transparent-color-index: 0
 
   images:
 
-    - dirt.png
-    - grass.png
-    
