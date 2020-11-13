@@ -26,7 +26,7 @@
 #include "gfx/gfx.h"
 
 
-	static gfx_sprite_t *blocks[64];
+	static gfx_sprite_t *blocks[64 * 3];
 
 void main(void);
 void LoadBlocks(void);
@@ -35,26 +35,44 @@ void DrawMenu(void);
 	//ptr points to sprite data after the header
 	//len is length of sprite data
 	//sprites points to sprite pointers. Make sure it is big enough to hold the sprites.
-	int loadTextures(void *ptr, int len, gfx_sprite_t **sprites) {
-		int num = 0;
-		int offset = 0;
-			while (offset < len) {
-				sprites[num++] = ptr + offset;
-				offset += 16*16*2;
-			}
-			memcpy(blocks, sprites, sizeof(sprites));
-		return num;
+int loadTextures(void *ptr, int len, gfx_sprite_t **sprites){
+  int num = 0;
+  int offset = 3;
+  //while (offset < len) {
+	while (num < 64) {
+		sprites[num++] = ptr + offset;
+		offset += 16*16*2;
 	}
-	
+  return num;
+}
+
+/*	ICE code to load the blocks:
+[i]OPEN THE APPVAR
+64->NSPRITES
+16*16+2->SPRITESIZE
+Open(Str0,"r"->D
+GetDataPtr(D->PTR
+Close(D
+NSPRITES*3->N
+Alloc(N->SPRITES
+0->A
+Repeat A=N
+	PTR->{SPRITES+A
+	PTR+SPRITESIZE->PTR
+	A+3->A
+End
+*/
 
 //first, run LoadTextures(), then, draw the main menu...
 
 void main(void) {
 	ti_var_t appvar;
+	int A, N, NSPRITES, SPRITESIZE, PTR;
     gfx_SetPalette(xlibc, sizeof_xlibc, 0);
 	//wherever you need to load the sprites
 	appvar = ti_Open("MCCESPR", "r");
-	loadTextures(ti_GetDataPtr(appvar)+2, ti_GetSize(appvar)-2, &blocks);
+	loadTextures(ti_GetDataPtr(appvar), ti_GetSize(appvar)-3, &blocks);
+	ti_CloseAll();
 
 	gfx_Begin();
 	//gfx_SetPalette(myPalette, sizeof_myPalette, 0);
