@@ -6,11 +6,11 @@ libs     D1AA03 D1AA56            53h
 startup  D1AA56 D1AA95            3Fh
 cleanup  D1AA95 D1AAA9            14h
 exit     D1AAA9 D1AAAF             6h
-code     D1AAAF D1AC42           193h
-data     D1AC42 D1AE64           222h
-strsect  D1AE64 D1AE6E             Ah
-text     D1AE6E D1AE6E             0h
-bss      D031F6 D03436 D13FD6    240h
+code     D1AAAF D1AC32           183h
+data     D1AC32 D1AE54           222h
+strsect  D1AE54 D1AE5E             Ah
+text     D1AE5E D1AE5E             0h
+bss      D031F6 D032B7 D13FD6     C1h
 header   D1A87F D1A882             3h
 
 Label                           Value
@@ -32,9 +32,9 @@ _exit                         = D1AAAB
 __exit                        = D1AA84
 __exitsp                      = D1AA84
 __errsp                       = D1AA84
-_xlibc                        = D1AC64
-_DrawMenu                     = D1ABAC
-_main                         = D1AB39
+_xlibc                        = D1AC54
+_DrawMenu                     = D1AB9C
+_main                         = D1AB34
 _loadTextures                 = D1AAE1
 _ti_CloseAll                  = D1AA17
 _ti_Open                      = D1AA1B
