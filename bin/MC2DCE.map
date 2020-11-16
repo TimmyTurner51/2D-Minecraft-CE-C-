@@ -6,11 +6,11 @@ libs     D1AA03 D1AA56            53h
 startup  D1AA56 D1AA95            3Fh
 cleanup  D1AA95 D1AAA9            14h
 exit     D1AAA9 D1AAAF             6h
-code     D1AAAF D1AC32           183h
-data     D1AC32 D1AE54           222h
-strsect  D1AE54 D1AE5E             Ah
-text     D1AE5E D1AE5E             0h
-bss      D031F6 D032B7 D13FD6     C1h
+code     D1AAAF D1AC27           178h
+data     D1AC27 D1AE49           222h
+strsect  D1AE49 D1AE53             Ah
+text     D1AE53 D1AE53             0h
+bss      D031F6 D032BA D13FD6     C4h
 header   D1A87F D1A882             3h
 
 Label                           Value
@@ -18,8 +18,6 @@ Label                           Value
 _os_DisableHomeTextBuffer     = D1AAAF
 _os_EnableHomeTextBuffer      = D1AAC1
 __frameset                    = D1AAD3
-__imul_b                      = 000158
-__imul_b                      = 000150
 __stoiu                       = 000264
 __setflag                     = 000218
 __findlibload                 = D1A9AB
@@ -32,10 +30,11 @@ _exit                         = D1AAAB
 __exit                        = D1AA84
 __exitsp                      = D1AA84
 __errsp                       = D1AA84
-_xlibc                        = D1AC54
-_DrawMenu                     = D1AB9C
-_main                         = D1AB34
-_loadTextures                 = D1AAE1
+_xlibc                        = D1AC49
+_DrawMenu                     = D1AB91
+_main                         = D1AAE1
+_ptr                          = D032B7
+_sprites                      = D031F7
 _ti_CloseAll                  = D1AA17
 _ti_Open                      = D1AA1B
 _ti_GetSize                   = D1AA1F
