@@ -33,58 +33,26 @@
 void main(void);
 void LoadBlocks(void);
 void DrawMenu(void);
-	
-	/*
-	//ptr points to sprite data after the header
-	//len is length of sprite data
-	//sprites points to sprite pointers. Make sure it is big enough to hold the sprites.
-int loadTextures(void *ptr, int len, gfx_sprite_t **sprites) {
-    int num = 0;
-    int offset = 0;
-    while (offset < len) {
-        sprites[num++] = ptr + offset;
-        offset += 16*16+2;
-    }
-    return num;
-}
-*/
 
-//first, run LoadTextures(), then, draw the main menu...
+	//dbg_sprintf(dbgout, "ptr is %p\n", ptr);
 
 void main(void) {
-    uint24_t num = 0;
-	uint24_t offset;
-	int x, y;
 	gfx_Begin();
     gfx_SetPalette(xlibc, sizeof_xlibc, 0);
 	gfx_SetDrawBuffer();
-	ti_CloseAll();
-	appvar = ti_Open("MCCESPR", "r");
-	dbg_sprintf(dbgout, "appvar is %p\n", appvar);
-	ptr = ti_GetDataPtr(appvar);
-	ti_CloseAll();
-	offset = 3;
-		while (num < 64) {
-			sprites[num] = (gfx_sprite_t*)(ptr + offset);
-			num++;
-			offset += (16 * 16) + 2;
-		}
-  	for (x = 0; x < 20; x++) {
-  		for (y = 0; y < 15; y++) {
-    		gfx_TransparentSprite_NoClip(sprites[6], x * 16, y * 16);
-		}
-    	gfx_BlitBuffer();
-  	}
-
-	//dbg_sprintf(dbgout, "ptr is %p\n", ptr);
+	LoadBlocks();
   	DrawMenu();
 	
 	gfx_End();
 }
 
 void DrawMenu(void) {
-	int CursorY;
-  
+	int CursorY, x, y;
+	for (x = 0; x < 20; x++) {
+		for (y = 0; y < 15; y++) {
+			gfx_TransparentSprite_NoClip(sprites[2], x * 16, y * 16);
+		}
+	}
 	while (!(kb_IsDown(kb_Key2nd))) {  
   		kb_Scan();
   	
@@ -92,4 +60,29 @@ void DrawMenu(void) {
     	gfx_BlitBuffer();
   	}
   
+}
+
+void LoadBlocks(void) {
+	
+    int num = 0;
+	int offset, size;
+	int x, y;
+	offset = 1;
+	ti_CloseAll();
+	appvar = ti_Open("MCCESPR", "r");
+	ptr = ti_GetDataPtr(appvar);
+	size = ti_GetSize(appvar) - offset;
+	ti_CloseAll();
+
+		while (num < 64) {
+			sprites[num] = (gfx_sprite_t*)(ptr + offset);
+			
+			gfx_ScaledTransparentSprite_NoClip(sprites[num], 106, 106, 2, 2);
+			gfx_BlitBuffer();
+			while (!(os_GetCSC()));
+			
+			num++;
+			offset += (16 * 16) + 2;
+		}
+
 }
