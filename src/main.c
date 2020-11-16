@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 //  2D Minecraft CE (C)
 //  Authors: TimmyTurner51, LogicalJoe, and Beckadamtheinventor
@@ -26,37 +25,49 @@
 #include "gfx/gfx.h"
 
 
-	static gfx_sprite_t *sprites[64];
 	static ti_var_t appvar;
+	gfx_sprite_t *sprites[64];
+	gfx_sprite_t *ptr;
 
 void main(void);
 void LoadBlocks(void);
 void DrawMenu(void);
 	
+	/*
 	//ptr points to sprite data after the header
 	//len is length of sprite data
 	//sprites points to sprite pointers. Make sure it is big enough to hold the sprites.
-int loadTextures(void *ptr, int len, gfx_sprite_t **sprites){
-  int num = 0;
-  int offset = 0;
-  while (offset < len) {
-    sprites[num++] = ptr + offset;
-    offset += 16*16+2;
-  }
-  return num;
+int loadTextures(void *ptr, int len, gfx_sprite_t **sprites) {
+    int num = 0;
+    int offset = 0;
+    while (offset < len) {
+        sprites[num++] = ptr + offset;
+        offset += 16*16+2;
+    }
+    return num;
 }
-
+*/
 
 //first, run LoadTextures(), then, draw the main menu...
 
 void main(void) {
-	int A, N, NSPRITES, SPRITESIZE, PTR;
+    uint24_t num = 0;
+    uint24_t offset = 3;
+	//void *ptr;
+	//int numSprites, spriteSize, ptr, n, a;
+	//uint24_t sprites[64] = { 0 };
     gfx_SetPalette(xlibc, sizeof_xlibc, 0);
 	//wherever you need to load the sprites
 	appvar = ti_Open("MCCESPR", "r");
-	loadTextures(ti_GetDataPtr(appvar)+3, ti_GetSize(appvar)-3, &sprites);
+	//loadTextures(ti_GetDataPtr(appvar)+3, ti_GetSize(appvar)-3, sprites); 
+	//memcpy(ptr, ti_GetDataPtr(appvar), ti_GetSize(appvar));
+	ptr = ti_GetDataPtr(appvar);
+    while (offset < ti_GetSize(appvar)) {
+		sprites[num] = (gfx_sprite_t*)(ptr + offset);
+		num++;
+        offset = offset + ((16 * 16) + 2);
+    }
 	ti_CloseAll();
-
 	gfx_Begin();
 	//gfx_SetPalette(myPalette, sizeof_myPalette, 0);
 
@@ -71,7 +82,7 @@ void DrawMenu(void) {
 	//somewhere global
   	for (x = 0; x < 20; x++) {
   		for (y = 0; y < 15; y++) {
-    		gfx_TransparentSprite_NoClip(sprites[1], x * 16, y * 16);
+    		gfx_TransparentSprite_NoClip(sprites[4], x * 16, y * 16);
 		}
   	}
   
@@ -83,4 +94,3 @@ void DrawMenu(void) {
   	}
   
 }
-
