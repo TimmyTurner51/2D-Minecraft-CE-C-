@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <debug.h>
 
 #include <graphx.h>
 #include <keypadc.h>
@@ -52,39 +53,37 @@ int loadTextures(void *ptr, int len, gfx_sprite_t **sprites) {
 
 void main(void) {
     uint24_t num = 0;
-    uint24_t offset = 3;
-	//void *ptr;
-	//int numSprites, spriteSize, ptr, n, a;
-	//uint24_t sprites[64] = { 0 };
-    gfx_SetPalette(xlibc, sizeof_xlibc, 0);
-	//wherever you need to load the sprites
-	appvar = ti_Open("MCCESPR", "r");
-	//loadTextures(ti_GetDataPtr(appvar)+3, ti_GetSize(appvar)-3, sprites); 
-	//memcpy(ptr, ti_GetDataPtr(appvar), ti_GetSize(appvar));
-	ptr = ti_GetDataPtr(appvar);
-    while (offset < ti_GetSize(appvar)) {
-		sprites[num] = (gfx_sprite_t*)(ptr + offset);
-		num++;
-        offset = offset + ((16 * 16) + 2);
-    }
-	ti_CloseAll();
+	uint24_t offset;
+	int x, y;
 	gfx_Begin();
-	//gfx_SetPalette(myPalette, sizeof_myPalette, 0);
+    gfx_SetPalette(xlibc, sizeof_xlibc, 0);
+	gfx_SetDrawBuffer();
+	ti_CloseAll();
+	appvar = ti_Open("MCCESPR", "r");
+	dbg_sprintf(dbgout, "appvar is %p\n", appvar);
+	ptr = ti_GetDataPtr(appvar);
+	ti_CloseAll();
+	offset = 3;
+		while (num < 64) {
+			sprites[num] = (gfx_sprite_t*)(ptr + offset);
+			num++;
+			offset += (16 * 16) + 2;
+		}
+  	for (x = 0; x < 20; x++) {
+  		for (y = 0; y < 15; y++) {
+    		gfx_TransparentSprite_NoClip(sprites[6], x * 16, y * 16);
+		}
+    	gfx_BlitBuffer();
+  	}
 
+	//dbg_sprintf(dbgout, "ptr is %p\n", ptr);
   	DrawMenu();
 	
 	gfx_End();
 }
 
 void DrawMenu(void) {
-	int x, y, CursorY;
-	gfx_SetDrawBuffer();
-	//somewhere global
-  	for (x = 0; x < 20; x++) {
-  		for (y = 0; y < 15; y++) {
-    		gfx_TransparentSprite_NoClip(sprites[4], x * 16, y * 16);
-		}
-  	}
+	int CursorY;
   
 	while (!(kb_IsDown(kb_Key2nd))) {  
   		kb_Scan();
