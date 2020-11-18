@@ -46,9 +46,10 @@ void main(void) {
 	gfx_SetDrawBuffer();
 	LoadBlocks();
   	DrawMenu();
-	gfx_SetTransparentColor(252);
 	
 	gfx_End();
+
+	os_ClrHome();
 }
 
 void DrawMenu(void) {
@@ -62,6 +63,9 @@ void DrawMenu(void) {
 			gfx_TransparentSprite_NoClip(sprites[1], x * 16, y * 16);
 		}
 	}
+	gfx_SetTextFGColor(230);
+	gfx_PrintStringXY("DEV_ALPHA v1.0.001", 3, 230);
+	gfx_SetTextFGColor(0);
 	gfx_ScaledTransparentSprite_NoClip(logo, 32, 10, 2, 2);
     /* buttons */
 	gfx_SetColor(181);
@@ -86,16 +90,17 @@ void DrawMenu(void) {
 				gfx_SetColor(181);
 				gfx_FillRectangle(60, i, 192, 16);
 				/* button text */
-				gfx_PrintStringXY("Singleplayer", 119, 142);
-				gfx_PrintStringXY("Multiplayer", 122, 162);
-				gfx_PrintStringXY("Options", 132, 182);
-				gfx_PrintStringXY("Quit", 143, 202);
+				gfx_PrintStringXY("Singleplayer", 119, 144);
+				gfx_PrintStringXY("Multiplayer", 122, 164);
+				gfx_PrintStringXY("Options", 132, 184);
+				gfx_PrintStringXY("Quit", 143, 204);
 			}
         i = y;
 		gfx_SetColor(0);
 		gfx_Rectangle(60, y, 192, 16);
 		gfx_Rectangle(61, y + 1, 190, 14);
         gfx_BlitBuffer();
+		if (kb_IsDown(kb_KeyClear)) return;
         if (kb_IsDown(kb_KeyUp) && y > 140) {
             delay(150);
 			redraw = 1;
@@ -110,14 +115,26 @@ void DrawMenu(void) {
     }
     if (y == 140) Singleplayer();
     if (y == 160) Multiplayer();
+    if (y == 180) {
+			/* options */
+
+
+	}
+
     return;
   
 }
 
 void Singleplayer(void) {
 
+	gfx_SetTransparentColor(252);
+
+
 }
 void Multiplayer(void) {
+
+	gfx_SetTransparentColor(252);
+
 
 }
 
