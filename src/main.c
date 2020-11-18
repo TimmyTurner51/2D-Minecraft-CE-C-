@@ -33,12 +33,14 @@
 void main(void);
 void LoadBlocks(void);
 void DrawMenu(void);
+void Singleplayer(void);
+void Multiplayer(void);
 
-	//dbg_sprintf(dbgout, "ptr is %p\n", ptr);
 
 void main(void) {
 	gfx_Begin();
     gfx_SetPalette(xlibc, sizeof_xlibc, 0);
+	gfx_SetTransparentColor(252);
 	gfx_SetDrawBuffer();
 	LoadBlocks();
   	DrawMenu();
@@ -47,20 +49,70 @@ void main(void) {
 }
 
 void DrawMenu(void) {
-	int CursorY, x, y;
+	uint24_t CursorY;
+	uint24_t x;
+	uint24_t y;
+	uint24_t i;
+	uint24_t redraw;
+	uint24_t option;
 	for (x = 0; x < 20; x++) {
 		for (y = 0; y < 15; y++) {
-			gfx_TransparentSprite_NoClip(sprites[2], x * 16, y * 16);
+			gfx_TransparentSprite_NoClip(sprites[1], x * 16, y * 16);
 		}
 	}
-	while (!(kb_IsDown(kb_Key2nd))) {  
-  		kb_Scan();
-  	
-  	
-    	gfx_BlitBuffer();
-  	}
+    /* buttons */
+	gfx_SetColor(181);
+	gfx_FillRectangle(60, 140, 192, 16);
+	gfx_FillRectangle(60, 160, 192, 16);
+	gfx_FillRectangle(60, 180, 60, 16);
+	gfx_FillRectangle(190, 180, 60, 16);
+	redraw = 1;
+	x = 60;
+	y = 140;
+	i = y;
+	while (!(kb_IsDown(kb_Key2nd))) {
+        gfx_SetColor(140);
+        kb_Scan();
+        if (redraw == 1) {
+            redraw = 0;
+            /* redraw only the one button that needs it */
+			gfx_SetColor(181);
+			gfx_FillRectangle(x, i, 192 - (60 * (y = 180)), 16);
+            /* button text */
+            gfx_PrintStringXY("Singleplayer", 112, 142);
+            gfx_PrintStringXY("Multiplayer", 112, 162);
+            gfx_PrintStringXY("Options", 63, 182);
+            gfx_PrintStringXY("Quit", 193, 182);
+			gfx_SetColor(0);
+            gfx_Rectangle(60, y, 192, 16);
+            gfx_Rectangle(61, y + 1, 190, 14);
+            gfx_BlitBuffer();
+        }
+        i = y;
+        if (kb_IsDown(kb_KeyUp) && y > 140) {
+            delay(150);
+            y -= 20;
+        }
+        if (kb_IsDown(kb_KeyDown) && y < 180) {
+            delay(150);
+            y += 20;
+        }
+        if (i != y)                                 redraw = 1;
+        if (kb_IsDown(kb_Key2nd))                   option = 1;
+    }
+    if (y == 140) Singleplayer();
+    if (y == 160) Multiplayer();
+    return;
   
 }
+
+void Singleplayer(void) {
+
+}
+void Multiplayer(void) {
+
+}
+
 
 void LoadBlocks(void) {
 	
@@ -76,13 +128,8 @@ void LoadBlocks(void) {
 
 		while (num < 64) {
 			sprites[num] = (gfx_sprite_t*)(ptr + offset);
-			
-			gfx_ScaledTransparentSprite_NoClip(sprites[num], 106, 106, 2, 2);
-			gfx_BlitBuffer();
-			while (!(os_GetCSC()));
-			
 			num++;
-			offset += (16 * 16) + 2;
+			offset += 86;
 		}
 
 }
