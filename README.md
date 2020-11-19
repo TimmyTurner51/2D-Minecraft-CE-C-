@@ -8,3 +8,7 @@ Platforms: TI-84 Plus CE.
 OS versions: You can use anything below OS 5.5.
 
 Version: DEV_ALPHA v1.0.001
+
+Want to help? Contact me via email: minecraftrules9707@gmail.com
+
+Thanks for testing! This will be updated frequently!
