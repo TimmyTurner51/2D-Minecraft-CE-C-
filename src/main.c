@@ -20,9 +20,12 @@
 #include <graphx.h>
 #include <keypadc.h>
 
+#include <srldrvce.h>
+#include <usbdrvce.h>
+
 #include "gfx/gfx.h"
 
-	bool submenu = false;
+
 	static ti_var_t appvar;
 	gfx_sprite_t *sprites[64];
 	gfx_sprite_t *ptr;
@@ -30,6 +33,8 @@
 	//define the world data list
 	static char WorldData[200 * 200] = { 0 };
 	
+	//hopefully a static 'y' will fix some menu bugs...
+	static uint24_t x, y, pos;
 	//{ name of world 1, name of world 2, etc. }
 	static char WorldsList[20] = { 0 };
 	//{ name of server 1, name of server 2, etc. }
@@ -38,9 +43,11 @@
 
 	//handle these annoying statics later...
 	static uint24_t timeofday;
-	static uint24_t worldtimer;
 	static uint24_t playerX;
 	static uint24_t playerY;
+	static uint24_t curX;
+	static uint24_t curY;
+	static uint24_t curPos;
 	static uint24_t hotbar[5] = { 0 };
 	static uint24_t hotbarCur;
 	
@@ -64,8 +71,55 @@ void main(void) {
 	appvar = ti_Open("MC2DDAT", "r");
 	logo = ti_GetDataPtr(appvar);
 	ti_CloseAll();
+
   	DrawMenu();
-	
+		
+		kb_Scan();
+		if (y == 125) {
+			PlayMenu();
+				//generator...blah, blah, blah, yada yada yadda...
+				for (x = 0; x < 20; x++) {
+					for (y = 0; y < 15; y++) {
+						gfx_TransparentSprite_NoClip(sprites[1], x * 16, y * 16);
+					}
+				}
+				gfx_SetTextFGColor(254);
+				gfx_PrintStringXY("Generating World", 102, 90);
+				gfx_PrintStringXY("Building Terrain", 104, 104);
+				gfx_SetColor(4);
+				gfx_FillRectangle(90, 120, 320-180, 7);
+				gfx_SetColor(0);
+				gfx_Rectangle(90, 120, 320-180, 7);
+				gfx_SetColor(6);
+				gfx_BlitBuffer();
+				for(pos = 799; pos < 40000; pos++) {
+					//grass
+					if ((pos > 999) && (pos < 1200)) WorldData[pos] = 1;
+					//dirt
+					if (pos > 1199) WorldData[pos] = 2;
+					
+				}
+				for (x = 91; x < 320-92; x++) {
+					//green progress bar... for looks at this point
+					gfx_VertLine(x, 121, 5);
+					delay(20);
+					gfx_BlitBuffer();
+				}
+				
+			delay(200);
+			kb_Scan();
+			WorldEngine();
+		}
+		if (y == 150) {
+			Achievements();
+			DrawMenu();
+		}
+
+		if (y == 175) {
+				/* Game Settings */
+
+
+		}
 	gfx_End();
 
 	os_ClrHome();
@@ -73,9 +127,11 @@ void main(void) {
 
 void DrawMenu(void) {
 
-	uint24_t CursorY, x = 60, y = 125, i = y, option, test, scroll = 16, scrollY, redraw = 1, timer = 0;
+	uint24_t CursorY, x = 60, i, option, test, scroll = 16, scrollY, redraw = 1, timer = 0;
+	y = 125;
+	i = y;
 	gfx_SetTransparentColor(255);
-	while (!(kb_IsDown(kb_Key2nd)) && submenu == false) {
+	while (!(kb_IsDown(kb_Key2nd))) {
         kb_Scan();
 		if (redraw == 1) {
 			for (test = 0; test < 20; test++) {
@@ -130,27 +186,13 @@ void DrawMenu(void) {
 
 	gfx_SetTransparentColor(252);
 
-    if (y == 125) {
-		PlayMenu();
-		DrawMenu();
-	}
-    if (y == 150) {
-		Achievements();
-		DrawMenu();
-	}
-    if (y == 175) {
-			/* Game Settings */
-
-
-	}
-
     return;
   
 }
 
 void PlayMenu(void) {
 
-	uint24_t tab, CursorY, x, y, i, redraw, option, pos;
+	uint24_t tab, CursorY, x, i, redraw, option, pos;
 	for (x = 0; x < 20; x++) {
 		for (y = 0; y < 15; y++) {
 			gfx_TransparentSprite_NoClip(sprites[1], x * 16, y * 16);
@@ -160,9 +202,8 @@ void PlayMenu(void) {
 	tab = 0;
 	CursorY = 40;
 	redraw = 1;
-	kb_Scan();
-	submenu = true;
-	while (!(kb_IsDown(kb_Key2nd)) && submenu == true) {
+		kb_Scan();
+	while (!(kb_IsDown(kb_Key2nd))) {
 		kb_Scan();
 		if (redraw == 1) {
 			gfx_SetColor(181);
@@ -188,25 +229,11 @@ void PlayMenu(void) {
 			tab++;
 			redraw = 1;
 		}
-		if (kb_IsDown(kb_KeyEnter)) {
-			submenu = false;
-			DrawMenu();
-		}
+		if (kb_IsDown(kb_KeyClear)) DrawMenu();
 
 		gfx_BlitBuffer();
 
 	}
-
-		//generator...blah, blah, blah
-		for(pos = 799; pos < 40000; pos++) {
-			//grass
-			if (pos < 999) WorldData[pos] = 1;
-			//dirt
-			
-		}
-
-		WorldEngine();
-
 
 }
 void Achievements(void) {
@@ -241,8 +268,24 @@ void Achievements(void) {
 
 void WorldEngine(void) {
 
+	uint24_t playerX, playerY, curX, curY;
+	gfx_SetDrawBuffer();
 	timeofday = 0;
-	worldtimer = 0;
+	gfx_FillScreen(191);
+	
+		//draw the world and player sprites, as well as the player cursor... (none of which exist just yet)
+
+		while (!(kb_IsDown(kb_KeyClear))) {
+			kb_Scan();
+
+			gfx_BlitBuffer();
+
+		}
+
+		//save the world data, playerX, playerY, curPos, curX, curY, timeofday, etc...
+
+	delay(100);
+	DrawMenu();
 
 }
 
