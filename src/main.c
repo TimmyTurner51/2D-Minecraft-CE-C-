@@ -179,18 +179,17 @@ void PlayMenu(void) {
 			tab++;
 			redraw = 1;
 		}
-		if (kb_IsDown(kb_KeyEnter)) {
+    if (kb_IsDown(kb_KeyEnter)) {
 			submenu = false;
 			DrawMenu();
 		}
 
 		gfx_BlitBuffer();
-
 	}
 }
 
 void Achievements(void) {
-
+  
 	uint24_t CursorY, x, y, i, redraw, option;
 	for (x = 0; x < 20; x++) {
 		for (y = 0; y < 15; y++) {
