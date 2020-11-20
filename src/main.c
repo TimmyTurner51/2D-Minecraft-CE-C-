@@ -1,10 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
-//  2D Minecraft CE (C)
-//  Authors: TimmyTurner51, LogicalJoe, and Beckadamtheinventor
-//  License: ??
-//  Description: A 2D Minecraft clone made for the TI-84 Plus CE, written in C.
-////////////////////////////////////////////////////////////////////////////////
-
 #define usb_callback_data_t usb_device_t
 
 #include <stdbool.h>
@@ -22,7 +15,7 @@
 
 #include "gfx/gfx.h"
 
-	bool submenu = false;
+
 	static ti_var_t appvar;
 	gfx_sprite_t *sprites[64];
 	gfx_sprite_t *ptr;
@@ -66,7 +59,7 @@ void DrawMenu(void) {
 
 	uint24_t CursorY, x = 60, y = 125, i = y, option, test, scroll = 16, scrollY, redraw = 1, timer = 0;
 	gfx_SetTransparentColor(255);
-	while (!(kb_IsDown(kb_Key2nd)) && submenu == false) {
+	while (!(kb_IsDown(kb_Key2nd))) {
         kb_Scan();
 		if (redraw == 1) {
 			for (test = 0; test < 20; test++) {
@@ -151,9 +144,8 @@ void PlayMenu(void) {
 	tab = 0;
 	CursorY = 40;
 	redraw = 1;
-	kb_Scan();
-	submenu = true;
-	while (!(kb_IsDown(kb_Key2nd)) && submenu == true) {
+		kb_Scan();
+	while (!(kb_IsDown(kb_Key2nd))) {
 		if (redraw == 1) {
 			gfx_SetColor(181);
 			gfx_FillRectangle(20, 20, 280, 200);
@@ -179,16 +171,13 @@ void PlayMenu(void) {
 			tab++;
 			redraw = 1;
 		}
-		if (kb_IsDown(kb_KeyEnter)) {
-			submenu = false;
-			DrawMenu();
-		}
+		if (kb_IsDown(kb_KeyClear)) DrawMenu();
 
 		gfx_BlitBuffer();
 
 	}
-}
 
+}
 void Achievements(void) {
 
 	uint24_t CursorY, x, y, i, redraw, option;
@@ -219,6 +208,7 @@ void Achievements(void) {
 
 }
 
+
 void LoadBlocks(void) {
 	
     int num = 0;
@@ -238,6 +228,7 @@ void LoadBlocks(void) {
 		}
 
 }
+
 
 void GenerateTerrain(void) {
 	int l = 0;
