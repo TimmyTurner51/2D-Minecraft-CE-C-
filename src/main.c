@@ -309,8 +309,8 @@ void WorldEngine(void) {
 				for(x = 0; x < 320; x+=16) {
 					for(y = 0; y < 240; y+=16) {
 						//block behaviors, etc. may go here?...
-						//if (WorldData[playerPos] != 0)
-						gfx_Sprite_NoClip(sprites[WorldData[playerPos]], x, y);
+						if (WorldData[playerPos] != 0)
+						gfx_Sprite_NoClip(sprites[WorldData[playerPos] - 1], x, y);
 					}
 				}
 				gfx_SetTextXY(5, 5);
@@ -323,6 +323,7 @@ void WorldEngine(void) {
 				playerPos--;
 				posX--;
 				redraw = 1;
+				delay(50);
 				if (playerX < 0) playerX = 16;
 			}
 			if ((kb_IsDown(kb_KeyRight)) && (posX < 200)) {
@@ -330,18 +331,21 @@ void WorldEngine(void) {
 				posX++;
 				playerPos++;
 				redraw = 1;
+				delay(50);
 				if (playerX > 16) playerX = 0;
 			}
 			if ((kb_IsDown(kb_KeyUp)) && (playerPos - 200 > -1)) {
 				playerY--;
 				playerPos -= 200;
 				redraw = 1;
+				delay(50);
 				if (playerY < 0) playerY = 16;
 			}
 			if ((kb_IsDown(kb_KeyDown)) && (playerPos + 200 < 40000)) {
 				playerY++;
 				playerPos += 200;
 				redraw = 1;
+				delay(50);
 				if (playerY > 16) playerY = 0;
 			}
 
