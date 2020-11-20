@@ -92,7 +92,7 @@ void main(void) {
 				gfx_Rectangle(90, 120, 320-180, 7);
 				gfx_SetColor(6);
 				gfx_BlitBuffer();
-				for(pos = 799; pos < 40000; pos++) {
+				for(pos = 0; pos < 40000; pos++) {
 					//grass
 					if ((pos > 999) && (pos < 1200)) WorldData[pos] = 1;
 					//dirt
@@ -105,7 +105,10 @@ void main(void) {
 					delay(20);
 					gfx_BlitBuffer();
 				}
-				
+
+				//here is where we'll make the world's data appvar(s)...
+				//we need to save pretty much all vars in the void WorldEngine code, and the world data itself...
+
 			delay(200);
 			kb_Scan();
 			WorldEngine();
@@ -268,21 +271,74 @@ void Achievements(void) {
 
 void WorldEngine(void) {
 
-	uint24_t playerX, playerY, curX, curY;
+	uint24_t redraw, x, playerX, playerY, playerPos, curX, curY, posX, testA, testB;
 	gfx_SetDrawBuffer();
+
+	gfx_SetTransparentColor(252);
+
 	timeofday = 0;
-	gfx_FillScreen(191);
+
+	playerX = 0;
+	playerY = 0;
+	playerPos = 0;
+	posX = 0;
+	redraw = 1;
 	
 		//draw the world and player sprites, as well as the player cursor... (none of which exist just yet)
-
+		
+		//gfx_SetClipRegion(-200 * 16, -200 * 16, 200 * 16, 200 * 16);
 		while (!(kb_IsDown(kb_KeyClear))) {
 			kb_Scan();
+
+			if (redraw == 1) {
+				redraw = 0;
+				gfx_FillScreen(191);
+				testA = 320 - playerX;
+				testB = 240 - playerY;
+				for(x = playerX; x < 320 - testA; x+=16) {
+					for(y = playerY; y < 240 - testB; y+=16) {
+						//block behaviors, etc. may go here?...
+						//if (WorldData[playerPos] != 0)
+						gfx_Sprite_NoClip(sprites[WorldData[playerPos]], x, y);
+					}
+				}
+				gfx_SetTextXY(5, 5);
+				gfx_SetTextFGColor(32);
+				gfx_PrintInt(playerPos, 1);
+			}
+
+			if (kb_IsDown(kb_KeyLeft) && (posX > 0)) {
+				playerX--;
+				playerPos--;
+				posX--;
+				redraw = 1;
+				if (playerX < 0) playerX = 16;
+			}
+			if (kb_IsDown(kb_KeyRight) && (posX < 200)) {
+				playerX++;
+				posX++;
+				playerPos++;
+				redraw = 1;
+				if (playerX > 16) playerX = 0;
+			}
+			if (kb_IsDown(kb_KeyUp) && (playerPos > 0)) {
+				playerY--;
+				redraw = 1;
+				if (playerY < 0) playerY = 16;
+				playerPos -= 200;
+			}
+			if (kb_IsDown(kb_KeyDown) && (playerPos < 40000)) {
+				playerY++;
+				redraw = 1;
+				if (playerY > 16) playerY = 0;
+				playerPos += 200;
+			}
 
 			gfx_BlitBuffer();
 
 		}
 
-		//save the world data, playerX, playerY, curPos, curX, curY, timeofday, etc...
+		//save the world data, playerX, playerY, playerPos, curPos, curX, curY, timeofday, etc...
 
 	delay(100);
 	DrawMenu();
