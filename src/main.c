@@ -20,12 +20,9 @@
 #include <graphx.h>
 #include <keypadc.h>
 
-#include <srldrvce.h>
-#include <usbdrvce.h>
-
 #include "gfx/gfx.h"
 
-
+	bool submenu = false;
 	static ti_var_t appvar;
 	gfx_sprite_t *sprites[64];
 	gfx_sprite_t *ptr;
@@ -78,7 +75,7 @@ void DrawMenu(void) {
 
 	uint24_t CursorY, x = 60, y = 125, i = y, option, test, scroll = 16, scrollY, redraw = 1, timer = 0;
 	gfx_SetTransparentColor(255);
-	while (!(kb_IsDown(kb_Key2nd))) {
+	while (!(kb_IsDown(kb_Key2nd)) && submenu == false) {
         kb_Scan();
 		if (redraw == 1) {
 			for (test = 0; test < 20; test++) {
@@ -163,8 +160,9 @@ void PlayMenu(void) {
 	tab = 0;
 	CursorY = 40;
 	redraw = 1;
-		kb_Scan();
-	while (!(kb_IsDown(kb_Key2nd))) {
+	kb_Scan();
+	submenu = true;
+	while (!(kb_IsDown(kb_Key2nd)) && submenu == true) {
 		kb_Scan();
 		if (redraw == 1) {
 			gfx_SetColor(181);
@@ -190,7 +188,10 @@ void PlayMenu(void) {
 			tab++;
 			redraw = 1;
 		}
-		if (kb_IsDown(kb_KeyClear)) DrawMenu();
+		if (kb_IsDown(kb_KeyEnter)) {
+			submenu = false;
+			DrawMenu();
+		}
 
 		gfx_BlitBuffer();
 
@@ -242,15 +243,6 @@ void WorldEngine(void) {
 
 	timeofday = 0;
 	worldtimer = 0;
-	
-
-
-
-
-
-
-
-
 
 }
 
