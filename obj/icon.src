@@ -1,0 +1,29 @@
+	.def __program_icon
+	.def __program_description
+
+	.assume adl=1
+	segment .icon
+
+	jp __program_description_end
+	db	1
+__program_icon:
+	db	010h, 010h
+	db	04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh
+	db	04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 06Ah, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh, 04Dh
+	db	04Dh, 06Ah, 04Dh, 04Dh, 04Dh, 06Ah, 04Dh, 06Ah, 04Dh, 04Dh, 04Dh, 04Dh, 06Ah, 04Dh, 04Dh, 06Ah
+	db	06Ah, 06Ah, 06Ah, 06Ah, 04Dh, 06Ah, 06Ah, 06Ah, 04Dh, 06Ah, 04Dh, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah
+	db	06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah
+	db	06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah
+	db	06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah
+	db	06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah
+	db	06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah
+	db	06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah
+	db	06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah
+	db	06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah
+	db	06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah
+	db	06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah
+	db	06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah
+	db	06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah, 06Ah
+__program_description:
+	db	"2D Minecraft CE (C) alpha v1.0.00", 0
+__program_description_end:
