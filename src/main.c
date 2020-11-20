@@ -38,6 +38,14 @@
 	//{ name of server 1, name of server 2, etc. }
 	static char Servers[20] = { 0 };
 	static char FriendsList[20] = { 0 };
+
+	//handle these annoying statics later...
+	static uint24_t timeofday;
+	static uint24_t worldtimer;
+	static uint24_t playerX;
+	static uint24_t playerY;
+	static uint24_t hotbar[5] = { 0 };
+	static uint24_t hotbarCur;
 	
     gfx_TempSprite(logo, 16, 16);
 
@@ -46,6 +54,7 @@ void LoadBlocks(void);
 void DrawMenu(void);
 void PlayMenu(void);
 void Achievements(void);
+void WorldEngine(void);
 
 
 void main(void) {
@@ -144,7 +153,7 @@ void DrawMenu(void) {
 
 void PlayMenu(void) {
 
-	uint24_t tab, CursorY, x, y, i, redraw, option;
+	uint24_t tab, CursorY, x, y, i, redraw, option, pos;
 	for (x = 0; x < 20; x++) {
 		for (y = 0; y < 15; y++) {
 			gfx_TransparentSprite_NoClip(sprites[1], x * 16, y * 16);
@@ -156,6 +165,7 @@ void PlayMenu(void) {
 	redraw = 1;
 		kb_Scan();
 	while (!(kb_IsDown(kb_Key2nd))) {
+		kb_Scan();
 		if (redraw == 1) {
 			gfx_SetColor(181);
 			gfx_FillRectangle(20, 20, 280, 200);
@@ -170,7 +180,6 @@ void PlayMenu(void) {
 			redraw = 0;
 		}
 
-		kb_Scan();
 		if (kb_IsDown(kb_KeyLeft) && (tab > 0)) {
 			delay(200);
 			tab--;
@@ -186,6 +195,17 @@ void PlayMenu(void) {
 		gfx_BlitBuffer();
 
 	}
+
+		//generator...blah, blah, blah
+		for(pos = 799; pos < 40000; pos++) {
+			//grass
+			if (pos < 999) WorldData[pos] = 1;
+			//dirt
+			
+		}
+
+		WorldEngine();
+
 
 }
 void Achievements(void) {
@@ -215,6 +235,22 @@ void Achievements(void) {
 	gfx_BlitBuffer();
 
 	while (!(os_GetCSC()));
+
+}
+
+void WorldEngine(void) {
+
+	timeofday = 0;
+	worldtimer = 0;
+	
+
+
+
+
+
+
+
+
 
 }
 
