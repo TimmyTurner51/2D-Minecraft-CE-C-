@@ -65,7 +65,6 @@ void main(void) {
 	gfx_Begin();
     gfx_SetPalette(xlibc, sizeof_xlibc, 0);
 	gfx_SetClipRegion(0-16, 0-16, 336, 256);
-	gfx_SetDrawBuffer();
 	LoadBlocks();
 	ti_CloseAll();
 	appvar = ti_Open("MC2DDAT", "r");
@@ -73,8 +72,76 @@ void main(void) {
 	ti_CloseAll();
 
   	DrawMenu();
-		
-		kb_Scan();
+	
+	gfx_End();
+
+	os_ClrHome();
+}
+
+void DrawMenu(void) {
+
+	uint24_t CursorY, x, i, option, test, scroll, scrollY, redraw, timer;
+	y = 125;
+	i = y;
+	scroll = 16;
+	redraw = 1;
+	gfx_SetDrawBuffer();
+	gfx_SetTransparentColor(255);
+	while (!(kb_IsDown(kb_Key2nd))) {
+        kb_Scan();
+		if (redraw == 1) {
+		redraw = 0;
+			for (test = 0; test < 20; test++) {
+				for (scrollY = scroll; scrollY < 256; scrollY += 16) {
+					gfx_TransparentSprite_NoClip(sprites[1], test * 16, scrollY - 16);
+				}
+			}
+			gfx_SetTextFGColor(230);
+			gfx_PrintStringXY("DEV_ALPHA v1.0.001", 3, 230);
+			gfx_SetTextFGColor(0);
+			gfx_ScaledTransparentSprite_NoClip(logo, 32, 20, 2, 2);
+			/* buttons */
+			gfx_SetColor(181);
+			gfx_FillRectangle(60, 125, 192, 20);
+			gfx_FillRectangle(60, 150, 192, 20);
+			gfx_FillRectangle(60, 175, 192, 20);
+			gfx_FillRectangle(60, 200, 192, 20);
+			gfx_SetColor(140);
+			/* redraw only the one button that needs it */
+			gfx_SetColor(181);
+			gfx_FillRectangle(60, i, 192, 20);
+			/* button text */
+			gfx_PrintStringXY("Play", 144, 130);
+			gfx_PrintStringXY("Achievements", 116, 155);
+			gfx_PrintStringXY("Settings", 130, 180);
+			gfx_PrintStringXY("Quit", 144, 205);
+        i = y;
+		gfx_BlitBuffer();
+	}
+		redraw = 1;
+		timer = 0;
+		scroll--;
+		if (scroll < 1) scroll = 16;
+		gfx_SetColor(0);
+		gfx_Rectangle(60, y, 192, 20);
+		gfx_Rectangle(61, y + 1, 190, 18);
+        gfx_BlitBuffer();
+		if (kb_IsDown(kb_KeyClear)) return;
+        if (kb_IsDown(kb_KeyUp) && y > 125) {
+            //delay(150);
+			redraw = 1;
+            y -= 25;
+        }
+        if (kb_IsDown(kb_KeyDown) && y < 200) {
+            //delay(150);
+			redraw = 1;
+            y += 25;
+        }
+        if (kb_IsDown(kb_Key2nd))                   option = 1;
+    }
+
+	gfx_SetTransparentColor(252);
+
 		if (y == 125) {
 			PlayMenu();
 				//generator...blah, blah, blah, yada yada yadda...
@@ -97,10 +164,13 @@ void main(void) {
 				*/
 
 				for(pos = 0; pos < 40000; pos++) {
+					WorldData[pos] = 0;
 					//grass
-					if ((pos > 999) && (pos < 1200)) WorldData[pos] = 1;
+					if ((pos > 1199) && (pos < 1400)) WorldData[pos] = 1;
 					//dirt
-					if (pos > 1199) WorldData[pos] = 2;
+					if ((pos > 1399) && (pos < 1600)) WorldData[pos] = 2;
+					//stone
+					if (pos > 1599) WorldData[pos] = 11;
 				
 				}
 
@@ -132,73 +202,6 @@ void main(void) {
 
 
 		}
-	gfx_End();
-
-	os_ClrHome();
-}
-
-void DrawMenu(void) {
-
-	uint24_t CursorY, x = 60, i, option, test, scroll = 16, scrollY, redraw = 1, timer = 0;
-	y = 125;
-	i = y;
-	gfx_SetTransparentColor(255);
-	while (!(kb_IsDown(kb_Key2nd))) {
-        kb_Scan();
-		if (redraw == 1) {
-			for (test = 0; test < 20; test++) {
-				for (scrollY = scroll; scrollY < 256; scrollY += 16) {
-					gfx_TransparentSprite_NoClip(sprites[1], test * 16, scrollY - 16);
-				}
-			}
-			gfx_SetTextFGColor(230);
-			gfx_PrintStringXY("DEV_ALPHA v1.0.001", 3, 230);
-			gfx_SetTextFGColor(0);
-			gfx_ScaledTransparentSprite_NoClip(logo, 32, 20, 2, 2);
-			/* buttons */
-			gfx_SetColor(181);
-			gfx_FillRectangle(60, 125, 192, 20);
-			gfx_FillRectangle(60, 150, 192, 20);
-			gfx_FillRectangle(60, 175, 192, 20);
-			gfx_FillRectangle(60, 200, 192, 20);
-			gfx_SetColor(140);
-			/* redraw only the one button that needs it */
-			gfx_SetColor(181);
-			gfx_FillRectangle(60, i, 192, 20);
-			/* button text */
-			gfx_PrintStringXY("Play", 144, 130);
-			gfx_PrintStringXY("Achievements", 116, 155);
-			gfx_PrintStringXY("Settings", 130, 180);
-			gfx_PrintStringXY("Quit", 144, 205);
-        i = y;
-		redraw = 0;
-	}
-		redraw = 1;
-		timer = 0;
-		scroll--;
-		if (scroll < 1) scroll = 16;
-		gfx_SetColor(0);
-		gfx_Rectangle(60, y, 192, 20);
-		gfx_Rectangle(61, y + 1, 190, 18);
-        gfx_BlitBuffer();
-		if (kb_IsDown(kb_KeyClear)) return;
-        if (kb_IsDown(kb_KeyUp) && y > 125) {
-            //delay(150);
-			redraw = 1;
-            y -= 25;
-        }
-        if (kb_IsDown(kb_KeyDown) && y < 200) {
-            //delay(150);
-			redraw = 1;
-            y += 25;
-        }
-        if (kb_IsDown(kb_Key2nd))                   option = 1;
-		gfx_BlitBuffer();
-    }
-
-	gfx_SetTransparentColor(252);
-
-    return;
   
 }
 
@@ -214,7 +217,6 @@ void PlayMenu(void) {
 	tab = 0;
 	CursorY = 40;
 	redraw = 1;
-		kb_Scan();
 	while (!(kb_IsDown(kb_Key2nd))) {
 		kb_Scan();
 		if (redraw == 1) {
@@ -241,7 +243,7 @@ void PlayMenu(void) {
 			tab++;
 			redraw = 1;
 		}
-		if (kb_IsDown(kb_KeyClear)) DrawMenu();
+		if (kb_IsDown(kb_KeyClear)) main();
 
 		gfx_BlitBuffer();
 
@@ -280,13 +282,16 @@ void Achievements(void) {
 
 void WorldEngine(void) {
 
-	uint16_t redraw, x, playerX, playerY, playerPos, curX, curY, posX, testA, testB;
+	uint24_t redraw, x, playerX, playerY, playerPos, curX, curY, posX, testA, testB, testC;
 	gfx_SetDrawBuffer();
 
 	gfx_SetTransparentColor(252);
 
 	timeofday = 0;
 
+	curX = 0;
+	curY = 0;
+	curPos = 0;
 	playerX = 0;
 	playerY = 0;
 	playerPos = 0;
@@ -304,15 +309,19 @@ void WorldEngine(void) {
 				gfx_FillScreen(191);
 				testA = 320 - playerX;
 				testB = 240 - playerY;
+				testC = playerPos;
 				//for(x = playerX; x < 320 - testA; x+=16) {
 					//for(y = playerY; y < 240 - testB; y+=16) {
-				for(x = 0; x < 320; x+=16) {
-					for(y = 0; y < 240; y+=16) {
+				for(y = playerY; y < testB; y+=16) {
+					for(x = playerX; x < testA; x+=16) {
 						//block behaviors, etc. may go here?...
-						if (WorldData[playerPos] != 0)
-						gfx_Sprite_NoClip(sprites[WorldData[playerPos] - 1], x, y);
+						if (WorldData[testC] != 0) gfx_Sprite_NoClip(sprites[WorldData[testC] - 1], x, y);
+						testC++;
 					}
+					testC += 180;
 				}
+				gfx_SetColor(0);
+				gfx_Rectangle_NoClip(curX, curY, 16, 16);
 				gfx_SetTextXY(5, 5);
 				gfx_SetTextFGColor(32);
 				gfx_PrintInt(playerPos, 1);
@@ -320,33 +329,42 @@ void WorldEngine(void) {
 
 			if ((kb_IsDown(kb_KeyLeft)) && (posX > 0) && (playerPos > 0)) {
 				playerX--;
-				playerPos--;
 				posX--;
 				redraw = 1;
-				delay(50);
-				if (playerX < 0) playerX = 16;
+				delay(150);
+					if (playerX < 0) {
+						playerX = 16;
+						playerPos--;
+					}
 			}
 			if ((kb_IsDown(kb_KeyRight)) && (posX < 200)) {
 				playerX++;
 				posX++;
-				playerPos++;
 				redraw = 1;
-				delay(50);
-				if (playerX > 16) playerX = 0;
+				delay(150);
+					if (playerX > 16) {
+						playerX = 0;
+						playerPos++;
+					}
 			}
 			if ((kb_IsDown(kb_KeyUp)) && (playerPos - 200 > -1)) {
 				playerY--;
-				playerPos -= 200;
 				redraw = 1;
-				delay(50);
-				if (playerY < 0) playerY = 16;
+				delay(150);
+					if (playerY < 0) {
+						playerY = 16;
+						playerPos -= 200;
+					}
 			}
-			if ((kb_IsDown(kb_KeyDown)) && (playerPos + 200 < 40000)) {
+			if ((kb_IsDown(kb_KeyDown)) && (playerPos + 200 < 30000)) {
 				playerY++;
-				playerPos += 200;
+				
 				redraw = 1;
-				delay(50);
-				if (playerY > 16) playerY = 0;
+				delay(150);
+					if (playerY > 16) {
+						playerY = 0;
+						playerPos += 200;
+					}
 			}
 
 			gfx_BlitBuffer();
