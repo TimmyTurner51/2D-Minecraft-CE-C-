@@ -64,7 +64,7 @@ void WorldEngine(void);
 void main(void) {
 	gfx_Begin();
     gfx_SetPalette(xlibc, sizeof_xlibc, 0);
-	gfx_SetClipRegion(0-16, 0-16, 336, 256);
+	gfx_SetClipRegion(0-17, 0-17, 336, 256);
 	LoadBlocks();
 	ti_CloseAll();
 	appvar = ti_Open("MC2DDAT", "r");
@@ -282,7 +282,7 @@ void Achievements(void) {
 
 void WorldEngine(void) {
 
-	uint24_t redraw, x, playerX, playerY, playerPos, curX, curY, posX, testA, testB, testC, blockSel;
+	int24_t redraw, x, playerX, playerY, playerPos, curX, curY, posX, testA, testB, testC, blockSel;
 
 	gfx_SetDrawBuffer();
 
@@ -407,7 +407,7 @@ void WorldEngine(void) {
 				playerX--;
 				curX--;
 			}
-			if ((kb_IsDown(kb_KeyUp)) && (playerPos - 200 > 0)) {
+			if ((kb_IsDown(kb_KeyUp)) && (playerPos - 201 > 0)) {
 				redraw = 1;
 					if (playerY == 16) {
 						playerY = 0;
@@ -418,7 +418,7 @@ void WorldEngine(void) {
 				playerY++;
 				curY++;
 			}
-			if ((kb_IsDown(kb_KeyDown)) && (playerPos + 200 < 30000)) {
+			if ((kb_IsDown(kb_KeyDown)) && (playerPos + 200 < 40000)) {
 				redraw = 1;
 					if (playerY == 0) {
 						playerY = 16;
