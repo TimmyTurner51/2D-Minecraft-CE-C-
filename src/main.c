@@ -328,43 +328,42 @@ void WorldEngine(void) {
 			}
 
 			if ((kb_IsDown(kb_KeyLeft)) && (posX > 0) && (playerPos > 0)) {
-				playerX--;
 				posX--;
 				redraw = 1;
 				delay(150);
-					if (playerX < 0) {
-						playerX = 16;
+					if (playerX == 16) {
+						playerX = 0;
 						playerPos--;
 					}
+				playerX--;
 			}
 			if ((kb_IsDown(kb_KeyRight)) && (posX < 200)) {
-				playerX++;
 				posX++;
 				redraw = 1;
 				delay(150);
-					if (playerX > 16) {
-						playerX = 0;
+					if (playerX == 0) {
+						playerX = 16;
 						playerPos++;
 					}
+				playerX++;
 			}
 			if ((kb_IsDown(kb_KeyUp)) && (playerPos - 200 > -1)) {
-				playerY--;
 				redraw = 1;
 				delay(150);
-					if (playerY < 0) {
-						playerY = 16;
+					if (playerY == 16) {
+						playerY = 0;
 						playerPos -= 200;
 					}
+				playerY++;
 			}
 			if ((kb_IsDown(kb_KeyDown)) && (playerPos + 200 < 30000)) {
-				playerY++;
-				
 				redraw = 1;
 				delay(150);
-					if (playerY > 16) {
-						playerY = 0;
+					if (playerY == 0) {
+						playerY = 16;
 						playerPos += 200;
 					}
+				playerY--;
 			}
 
 			gfx_BlitBuffer();
