@@ -282,7 +282,8 @@ void Achievements(void) {
 
 void WorldEngine(void) {
 
-	uint24_t redraw, x, playerX, playerY, playerPos, curX, curY, posX, testA, testB, testC;
+	uint24_t redraw, x, playerX, playerY, playerPos, curX, curY, posX, testA, testB, testC, blockSel;
+
 	gfx_SetDrawBuffer();
 
 	gfx_SetTransparentColor(252);
@@ -291,12 +292,15 @@ void WorldEngine(void) {
 
 	curX = 0;
 	curY = 0;
-	curPos = 0;
+	curPos = 1;
 	playerX = 0;
 	playerY = 0;
-	playerPos = 0;
+	playerPos = 1;
 	posX = 0;
 	redraw = 1;
+
+	//set selected block to grass block...
+	blockSel = 1;
 	
 		//draw the world and player sprites, as well as the player cursor... (none of which exist just yet)
 		
@@ -307,63 +311,123 @@ void WorldEngine(void) {
 			if (redraw == 1) {
 				redraw = 0;
 				gfx_FillScreen(191);
-				testA = 320 - playerX;
-				testB = 240 - playerY;
+				testA = 321 + playerX;
+				testB = 241 + playerY;
 				testC = playerPos;
 				//for(x = playerX; x < 320 - testA; x+=16) {
 					//for(y = playerY; y < 240 - testB; y+=16) {
 				for(y = playerY; y < testB; y+=16) {
 					for(x = playerX; x < testA; x+=16) {
 						//block behaviors, etc. may go here?...
-						if (WorldData[testC] != 0) gfx_Sprite_NoClip(sprites[WorldData[testC] - 1], x, y);
+						if ((x < 321) && (y < 241)) {
+							if (WorldData[testC] != 0) gfx_Sprite_NoClip(sprites[WorldData[testC] - 1], x, y);
+						}
 						testC++;
 					}
 					testC += 180;
 				}
 				gfx_SetColor(0);
 				gfx_Rectangle_NoClip(curX, curY, 16, 16);
+				gfx_Rectangle_NoClip(302, 0, 18, 18);
+				if (blockSel != 0) gfx_Sprite_NoClip(sprites[blockSel - 1], 303, 1);
+				/*
 				gfx_SetTextXY(5, 5);
 				gfx_SetTextFGColor(32);
 				gfx_PrintInt(playerPos, 1);
+				*/
 			}
 
-			if ((kb_IsDown(kb_KeyLeft)) && (posX > 0) && (playerPos > 0)) {
-				posX--;
+			if (kb_IsDown(kb_Key2nd)) {
+				delay(100);
+				WorldData[curPos] = blockSel;
 				redraw = 1;
-				delay(150);
+			}
+			if (kb_IsDown(kb_KeyDel)) {
+				delay(100);
+				WorldData[curPos] = 0;
+				redraw = 1;
+			}
+			if (kb_IsDown(kb_KeyGraphVar)) {
+				delay(100);
+				blockSel++;	
+				redraw = 1;
+			}
+			if (blockSel > 64) {
+				blockSel = 1;
+				redraw = 1;
+			}
+
+			if ((kb_IsDown(kb_KeyAlpha)) && (curX > 0)) {
+				delay(100);
+				curX -= 16;
+				curPos--;
+				redraw = 1;
+			}
+			if ((kb_IsDown(kb_KeyStat)) && (curX < 320)) {
+				delay(100);
+				curX += 16;
+				curPos++;
+				redraw = 1;
+			}
+			if ((kb_IsDown(kb_KeyMode)) && (curY > 0)) {
+				delay(100);
+				curY -= 16;
+				curPos -= 201;
+				redraw = 1;
+			}
+			if ((kb_IsDown(kb_KeyApps)) && (curY < 240)) {
+				delay(100);
+				curY += 16;
+				curPos += 201;
+				redraw = 1;
+			}
+
+
+			if ((kb_IsDown(kb_KeyLeft)) && (posX > 0) && (playerPos > 0)) {
+				redraw = 1;
 					if (playerX == 16) {
+						posX--;
 						playerX = 0;
 						playerPos--;
-					}
-				playerX--;
-			}
-			if ((kb_IsDown(kb_KeyRight)) && (posX < 200)) {
-				posX++;
-				redraw = 1;
-				delay(150);
-					if (playerX == 0) {
-						playerX = 16;
-						playerPos++;
+						curPos--;
+						curX -= 16;
 					}
 				playerX++;
+				curX++;
 			}
-			if ((kb_IsDown(kb_KeyUp)) && (playerPos - 200 > -1)) {
+			if ((kb_IsDown(kb_KeyRight)) && (posX < 200)) {
 				redraw = 1;
-				delay(150);
+					if (playerX == 0) {
+						posX++;
+						playerX = 16;
+						playerPos++;
+						curPos++;
+						curX += 16;
+					}
+				playerX--;
+				curX--;
+			}
+			if ((kb_IsDown(kb_KeyUp)) && (playerPos - 200 > 0)) {
+				redraw = 1;
 					if (playerY == 16) {
 						playerY = 0;
-						playerPos -= 200;
+						playerPos -= 201;
+						curPos -= 201;
+						curY -= 16;
 					}
 				playerY++;
+				curY++;
 			}
 			if ((kb_IsDown(kb_KeyDown)) && (playerPos + 200 < 30000)) {
 				redraw = 1;
-				delay(150);
 					if (playerY == 0) {
 						playerY = 16;
-						playerPos += 200;
+						playerPos += 201;
+						curPos += 201;
+						curY += 16;
 					}
 				playerY--;
+				curY--;
 			}
 
 			gfx_BlitBuffer();
