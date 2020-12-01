@@ -64,7 +64,7 @@ void WorldEngine(void);
 void main(void) {
 	gfx_Begin();
     gfx_SetPalette(xlibc, sizeof_xlibc, 0);
-	gfx_SetClipRegion(0-17, 0-17, 336, 256);
+	gfx_SetClipRegion( -17, -17, 337, 257);
 	LoadBlocks();
 	ti_CloseAll();
 	appvar = ti_Open("MC2DDAT", "r");
@@ -80,7 +80,7 @@ void main(void) {
 
 void DrawMenu(void) {
 
-	uint24_t CursorY, x, i, option, test, scroll, scrollY, redraw, timer;
+	uint24_t CursorY, x, i, option, test, scroll, scrollY, redraw, timer, height, val, tab;
 	y = 125;
 	i = y;
 	scroll = 16;
@@ -93,7 +93,7 @@ void DrawMenu(void) {
 		redraw = 0;
 			for (test = 0; test < 20; test++) {
 				for (scrollY = scroll; scrollY < 256; scrollY += 16) {
-					gfx_TransparentSprite_NoClip(sprites[1], test * 16, scrollY - 16);
+					gfx_TransparentSprite(sprites[1], test * 16, scrollY - 16);
 				}
 			}
 			gfx_SetTextFGColor(230);
@@ -143,13 +143,56 @@ void DrawMenu(void) {
 	gfx_SetTransparentColor(252);
 
 		if (y == 125) {
-			PlayMenu();
+
+			for (x = 0; x < 20; x++) {
+				for (y = 0; y < 15; y++) {
+					gfx_TransparentSprite(sprites[1], x * 16, y * 16);
+				}
+			}
+			gfx_SetTransparentColor(255);
+			tab = 0;
+			CursorY = 40;
+			redraw = 1;
+			kb_Scan();
+			while (!(kb_IsDown(kb_Key2nd))) {
+				kb_Scan();
+				if (redraw == 1) {
+					gfx_SetColor(181);
+					gfx_FillRectangle(20, 20, 280, 200);
+					gfx_SetColor(0);
+					gfx_Rectangle(20, 20, 280, 200);
+					gfx_Rectangle(20, 20, 280, 20);
+					gfx_SetColor(148);
+					gfx_FillRectangle(21 + (tab * 89), 21, 100, 18);
+					gfx_PrintStringXY("My Worlds", 40, 25);
+					gfx_PrintStringXY("Servers", 134, 25);
+					gfx_PrintStringXY("Friends", 240, 25);
+					redraw = 0;
+					gfx_BlitBuffer();
+				}
+
+				if (kb_IsDown(kb_KeyLeft) && (tab > 0)) {
+					delay(200);
+					tab--;
+					redraw = 1;
+				}
+				if (kb_IsDown(kb_KeyRight) && (tab < 2)) {
+					delay(200);
+					tab++;
+					redraw = 1;
+				}
+				if (kb_IsDown(kb_KeyClear)) main();
+
+
+			}
+
+
 				//generator...blah, blah, blah, yada yada yadda...
 				
 				/*
 				for (x = 0; x < 20; x++) {
 					for (y = 0; y < 15; y++) {
-						gfx_TransparentSprite_NoClip(sprites[1], x * 16, y * 16);
+						gfx_TransparentSprite(sprites[1], x * 16, y * 16);
 					}
 				}
 				gfx_SetTextFGColor(254);
@@ -163,14 +206,19 @@ void DrawMenu(void) {
 				gfx_BlitBuffer();
 				*/
 
-				for(pos = 0; pos < 40000; pos++) {
-					WorldData[pos] = 0;
-					//grass
-					if ((pos > 1199) && (pos < 1400)) WorldData[pos] = 1;
-					//dirt
-					if ((pos > 1399) && (pos < 1600)) WorldData[pos] = 2;
-					//stone
-					if (pos > 1599) WorldData[pos] = 11;
+				height = 4;
+				val = 4;
+				for(y = 0; y < 200; y++) {
+					for(x = 0; x < 200; x++) {
+						pos = (x + (y * 200));
+						WorldData[pos] = 0;
+						//grass
+						if ((y > height) && (y < height + 2)) WorldData[pos] = 1;
+						//dirt
+						if ((y > height + 1) && (y < height + val + 1)) WorldData[pos] = 2;
+						//stone
+						if (y > height + val) WorldData[pos] = 11;
+					}
 				
 				}
 
@@ -192,8 +240,36 @@ void DrawMenu(void) {
 			kb_Scan();
 			WorldEngine();
 		}
-		if (y == 150) {
-			Achievements();
+
+		if (y == 150) {\
+
+			for (x = 0; x < 20; x++) {
+				for (y = 0; y < 15; y++) {
+					gfx_TransparentSprite(sprites[1], x * 16, y * 16);
+				}
+			}
+			gfx_SetColor(181);
+			gfx_FillCircle(10, 10, 5);
+			gfx_FillCircle(309, 10, 5);
+			gfx_FillCircle(10, 229, 5);
+			gfx_FillCircle(309, 229, 5);
+			gfx_FillRectangle(10, 5, 300, 230);
+			gfx_FillRectangle(5, 10, 310, 220);
+			gfx_SetTextFGColor(0);
+			gfx_PrintStringXY("Achievements:", 20, 15);
+			gfx_SetTextFGColor(255);
+			for (x = 2; x < 18; x++) {
+				for (y = 2; y < 13; y++) {
+					gfx_TransparentSprite(sprites[10], x * 16, y * 16);
+				}
+			}
+			
+			gfx_BlitBuffer();
+
+			while (!(os_GetCSC()));
+
+
+
 			DrawMenu();
 		}
 
@@ -203,81 +279,6 @@ void DrawMenu(void) {
 
 		}
   
-}
-
-void PlayMenu(void) {
-
-	uint24_t tab, CursorY, x, i, redraw, option, pos;
-	for (x = 0; x < 20; x++) {
-		for (y = 0; y < 15; y++) {
-			gfx_TransparentSprite_NoClip(sprites[1], x * 16, y * 16);
-		}
-	}
-	gfx_SetTransparentColor(255);
-	tab = 0;
-	CursorY = 40;
-	redraw = 1;
-	while (!(kb_IsDown(kb_Key2nd))) {
-		kb_Scan();
-		if (redraw == 1) {
-			gfx_SetColor(181);
-			gfx_FillRectangle(20, 20, 280, 200);
-			gfx_SetColor(0);
-			gfx_Rectangle(20, 20, 280, 200);
-			gfx_Rectangle(20, 20, 280, 20);
-			gfx_SetColor(148);
-			gfx_FillRectangle_NoClip(21 + (tab * 89), 21, 100, 18);
-			gfx_PrintStringXY("My Worlds", 40, 25);
-			gfx_PrintStringXY("Servers", 134, 25);
-			gfx_PrintStringXY("Friends", 240, 25);
-			redraw = 0;
-		}
-
-		if (kb_IsDown(kb_KeyLeft) && (tab > 0)) {
-			delay(200);
-			tab--;
-			redraw = 1;
-		}
-		if (kb_IsDown(kb_KeyRight) && (tab < 2)) {
-			delay(200);
-			tab++;
-			redraw = 1;
-		}
-		if (kb_IsDown(kb_KeyClear)) main();
-
-		gfx_BlitBuffer();
-
-	}
-
-}
-void Achievements(void) {
-
-	uint24_t CursorY, x, y, i, redraw, option;
-	for (x = 0; x < 20; x++) {
-		for (y = 0; y < 15; y++) {
-			gfx_TransparentSprite_NoClip(sprites[1], x * 16, y * 16);
-		}
-	}
-	gfx_SetColor(181);
-	gfx_FillCircle_NoClip(10, 10, 5);
-	gfx_FillCircle_NoClip(309, 10, 5);
-	gfx_FillCircle_NoClip(10, 229, 5);
-	gfx_FillCircle_NoClip(309, 229, 5);
-	gfx_FillRectangle(10, 5, 300, 230);
-	gfx_FillRectangle(5, 10, 310, 220);
-	gfx_SetTextFGColor(0);
-	gfx_PrintStringXY("Achievements:", 20, 15);
-	gfx_SetTextFGColor(255);
-	for (x = 2; x < 18; x++) {
-		for (y = 2; y < 13; y++) {
-			gfx_TransparentSprite_NoClip(sprites[10], x * 16, y * 16);
-		}
-	}
-	
-	gfx_BlitBuffer();
-
-	while (!(os_GetCSC()));
-
 }
 
 void WorldEngine(void) {
@@ -304,7 +305,6 @@ void WorldEngine(void) {
 	
 		//draw the world and player sprites, as well as the player cursor... (none of which exist just yet)
 		
-		//gfx_SetClipRegion(-200 * 16, -200 * 16, 200 * 16, 200 * 16);
 		while (!(kb_IsDown(kb_KeyClear))) {
 			kb_Scan();
 
@@ -314,22 +314,18 @@ void WorldEngine(void) {
 				testA = 321 + playerX;
 				testB = 241 + playerY;
 				testC = playerPos;
-				//for(x = playerX; x < 320 - testA; x+=16) {
-					//for(y = playerY; y < 240 - testB; y+=16) {
 				for(y = playerY; y < testB; y+=16) {
 					for(x = playerX; x < testA; x+=16) {
 						//block behaviors, etc. may go here?...
-						if ((x < 321) && (y < 241)) {
-							if (WorldData[testC] != 0) gfx_Sprite_NoClip(sprites[WorldData[testC] - 1], x, y);
-						}
+						if (WorldData[testC] != 0) gfx_TransparentSprite(sprites[WorldData[testC] - 1], x, y);
 						testC++;
 					}
 					testC += 180;
 				}
 				gfx_SetColor(0);
-				gfx_Rectangle_NoClip(curX, curY, 16, 16);
-				gfx_Rectangle_NoClip(302, 0, 18, 18);
-				if (blockSel != 0) gfx_Sprite_NoClip(sprites[blockSel - 1], 303, 1);
+				gfx_Rectangle(curX, curY, 16, 16);
+				gfx_Rectangle(302, 0, 18, 18);
+				if (blockSel != 0) gfx_TransparentSprite(sprites[blockSel - 1], 303, 1);
 				/*
 				gfx_SetTextXY(5, 5);
 				gfx_SetTextFGColor(32);
@@ -337,7 +333,7 @@ void WorldEngine(void) {
 				*/
 			}
 
-			if (kb_IsDown(kb_Key2nd)) {
+			if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0)) {
 				delay(100);
 				WorldData[curPos] = blockSel;
 				redraw = 1;
@@ -392,8 +388,8 @@ void WorldEngine(void) {
 						curPos--;
 						curX -= 16;
 					}
-				playerX++;
-				curX++;
+				playerX += 2;
+				curX += 2;
 			}
 			if ((kb_IsDown(kb_KeyRight)) && (posX < 200)) {
 				redraw = 1;
@@ -404,8 +400,8 @@ void WorldEngine(void) {
 						curPos++;
 						curX += 16;
 					}
-				playerX--;
-				curX--;
+				playerX -= 2;
+				curX -= 2;
 			}
 			if ((kb_IsDown(kb_KeyUp)) && (playerPos - 201 > 0)) {
 				redraw = 1;
@@ -415,8 +411,8 @@ void WorldEngine(void) {
 						curPos -= 201;
 						curY -= 16;
 					}
-				playerY++;
-				curY++;
+				playerY += 2;
+				curY += 2;
 			}
 			if ((kb_IsDown(kb_KeyDown)) && (playerPos + 200 < 40000)) {
 				redraw = 1;
@@ -426,8 +422,8 @@ void WorldEngine(void) {
 						curPos += 201;
 						curY += 16;
 					}
-				playerY--;
-				curY--;
+				playerY -= 2;
+				curY -= 2;
 			}
 
 			gfx_BlitBuffer();
