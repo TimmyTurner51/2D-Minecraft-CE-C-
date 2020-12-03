@@ -34,7 +34,7 @@
 	static char WorldData[200 * 200] = { 0 };
 	
 	//hopefully a static 'y' will fix some menu bugs...
-	static uint16_t x, y, pos;
+	static int16_t x, y, pos;
 	//{ name of world 1, name of world 2, etc. }
 	static char WorldsList[20] = { 0 };
 	//{ name of server 1, name of server 2, etc. }
@@ -42,23 +42,25 @@
 	static char FriendsList[20] = { 0 };
 
 	//handle these annoying statics later...
-	static uint24_t timeofday;
-	static uint24_t playerX;
-	static uint24_t playerY;
-	static uint24_t curX;
-	static uint24_t curY;
-	static uint24_t curPos;
-	static uint24_t hotbar[5] = { 0 };
-	static uint24_t hotbarCur;
+	static int24_t timeofday;
+	static int24_t playerX;
+	static int24_t playerY;
+	static int24_t curX;
+	static int24_t curY;
+	static int24_t curPos;
+	static int24_t hotbar[5] = { 0 };
+	static int24_t hotbarCur;
+	static int24_t blockSel;
 	
     gfx_TempSprite(logo, 16, 16);
 
-void main(void);
 void LoadBlocks(void);
 void DrawMenu(void);
 void PlayMenu(void);
 void Achievements(void);
 void WorldEngine(void);
+void survivalinventory(void);
+void creativeInventory(void);
 
 
 void main(void) {
@@ -241,7 +243,7 @@ void DrawMenu(void) {
 			WorldEngine();
 		}
 
-		if (y == 150) {\
+		if (y == 150) {
 
 			for (x = 0; x < 20; x++) {
 				for (y = 0; y < 15; y++) {
@@ -283,7 +285,7 @@ void DrawMenu(void) {
 
 void WorldEngine(void) {
 
-	int24_t redraw, x, playerX, playerY, playerPos, curX, curY, posX, testA, testB, testC, blockSel;
+	int24_t redraw, x, playerX, playerY, playerPos, curX, curY, posX, testA, testB, testC, exit;
 
 	gfx_SetDrawBuffer();
 
@@ -291,21 +293,22 @@ void WorldEngine(void) {
 
 	timeofday = 0;
 
-	curX = 0;
-	curY = 0;
-	curPos = 1;
+	curX = 16*10;
+	curY = 16*4;
+	curPos = (curX / 16) + ((curY / 16) * 200) + 5;
 	playerX = 0;
 	playerY = 0;
 	playerPos = 1;
 	posX = 0;
 	redraw = 1;
+	exit = 0;
 
 	//set selected block to grass block...
 	blockSel = 1;
 	
 		//draw the world and player sprites, as well as the player cursor... (none of which exist just yet)
 		
-		while (!(kb_IsDown(kb_KeyClear))) {
+		while (exit == 0) {
 			kb_Scan();
 
 			if (redraw == 1) {
@@ -326,12 +329,11 @@ void WorldEngine(void) {
 				gfx_Rectangle(curX, curY, 16, 16);
 				gfx_Rectangle(302, 0, 18, 18);
 				if (blockSel != 0) gfx_TransparentSprite(sprites[blockSel - 1], 303, 1);
-				/*
-				gfx_SetTextXY(5, 5);
-				gfx_SetTextFGColor(32);
-				gfx_PrintInt(playerPos, 1);
-				*/
 			}
+
+
+			if (kb_IsDown(kb_KeyClear)) exit = 1;
+
 
 			if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0)) {
 				delay(100);
@@ -344,12 +346,8 @@ void WorldEngine(void) {
 				redraw = 1;
 			}
 			if (kb_IsDown(kb_KeyGraphVar)) {
-				delay(100);
-				blockSel++;	
-				redraw = 1;
-			}
-			if (blockSel > 64) {
-				blockSel = 1;
+				/* inventory */
+				creativeInventory();
 				redraw = 1;
 			}
 
@@ -381,9 +379,9 @@ void WorldEngine(void) {
 
 			if ((kb_IsDown(kb_KeyLeft)) && (posX > 0) && (playerPos > 0)) {
 				redraw = 1;
-					if (playerX == 16) {
+					if (playerX == 0) {
+						playerX = -16;
 						posX--;
-						playerX = 0;
 						playerPos--;
 						curPos--;
 						curX -= 16;
@@ -393,9 +391,9 @@ void WorldEngine(void) {
 			}
 			if ((kb_IsDown(kb_KeyRight)) && (posX < 200)) {
 				redraw = 1;
-					if (playerX == 0) {
+					if (playerX == -16) {
+						playerX = 0;
 						posX++;
-						playerX = 16;
 						playerPos++;
 						curPos++;
 						curX += 16;
@@ -405,8 +403,8 @@ void WorldEngine(void) {
 			}
 			if ((kb_IsDown(kb_KeyUp)) && (playerPos - 201 > 0)) {
 				redraw = 1;
-					if (playerY == 16) {
-						playerY = 0;
+					if (playerY == 0) {
+						playerY = -16;
 						playerPos -= 201;
 						curPos -= 201;
 						curY -= 16;
@@ -416,8 +414,8 @@ void WorldEngine(void) {
 			}
 			if ((kb_IsDown(kb_KeyDown)) && (playerPos + 200 < 40000)) {
 				redraw = 1;
-					if (playerY == 0) {
-						playerY = 16;
+					if (playerY == -16) {
+						playerY = 0;
 						playerPos += 201;
 						curPos += 201;
 						curY += 16;
@@ -435,6 +433,85 @@ void WorldEngine(void) {
 	delay(100);
 	DrawMenu();
 
+}
+
+void creativeInventory(void) {
+
+		int24_t scroll, redraw, selX, selY, posB;
+		gfx_SetDrawBuffer();
+		gfx_SetColor(181);
+		gfx_FillCircle(10, 10, 5);
+		gfx_FillCircle(309, 10, 5);
+		gfx_FillCircle(10, 229, 5);
+		gfx_FillCircle(309, 229, 5);
+		gfx_FillRectangle(10, 5, 300, 230);
+		gfx_FillRectangle(5, 10, 310, 220);
+		gfx_SetTextFGColor(0);
+		gfx_PrintStringXY("Inventory:", 14, 14);
+		gfx_SetTextFGColor(255);
+		selX = 10;
+		selY = 30;
+		posB = 1;
+		redraw = 1;
+		while (!(kb_IsDown(kb_KeyClear))) {
+			kb_Scan();
+			if (redraw == 1) {
+				redraw = 0;
+				pos = 0;
+				for (y = 30; y < 10 * 18; y += 18) {
+					for (x = 10; x < 10 * 28; x += 18) {
+						gfx_SetColor(148);
+						gfx_FillRectangle(x, y, 18, 18);
+						gfx_SetColor(0);
+						gfx_Rectangle(x, y, 18, 18);
+						if (pos < 64) gfx_TransparentSprite(sprites[pos++], x + 1, y + 1);
+					}
+				}
+				gfx_SetColor(254);
+				gfx_FillRectangle(selX + 6, selY + 6, 2, 2);
+				gfx_BlitBuffer();
+				
+			}
+
+			if ((kb_IsDown(kb_KeyUp)) && (selY > 30)) {
+				selY -= 18;
+				posB -= 15;
+				redraw = 1;
+				delay(80);
+			}
+			if ((kb_IsDown(kb_KeyDown)) && (selY < 10 * 18)) {
+				selY += 18;
+				posB += 15;
+				redraw = 1;
+				delay(80);
+			}
+			if ((kb_IsDown(kb_KeyLeft)) && (selX > 10)) {
+				selX -= 18;
+				posB--;
+				redraw = 1;
+				delay(80);
+			}
+			if ((kb_IsDown(kb_KeyRight)) && (selX < 28 * 18)) {
+				selX += 18;
+				posB++;
+				redraw = 1;
+				delay(80);
+			}
+
+			if (kb_IsDown(kb_Key2nd)) {
+				blockSel = posB;
+				redraw = 1;
+				delay(200);
+				return;
+			}
+			
+		}
+	
+
+
+	redraw = 1;
+	delay(200);
+	return;
 }
 
 
