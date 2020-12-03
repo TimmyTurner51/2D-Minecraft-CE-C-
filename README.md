@@ -7,7 +7,7 @@ Platforms: TI-84 Plus CE.
 
 OS versions: You can use anything below OS 5.5.
 
-Version: DEV_ALPHA v1.0.001
+Version: DEV_ALPHA v1.0.002
 
 
 Controls:
@@ -20,7 +20,7 @@ alpha, mode, stat, apps keys will move the block cursor
 
 del destroys
 
-[X,T,0,n] changes the block type
+[X,T,0,n] Opens the Creative inventory (only supports creative mode at the moment)
 
 
 
