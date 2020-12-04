@@ -6,7 +6,7 @@
 # ----------------------------
 
 NAME        ?= MC2DCE
-#COMPRESSED  ?= YES
+COMPRESSED  ?= YES
 ICON        ?= icon.png
 DESCRIPTION ?= "2D Minecraft CE (C) alpha v1.0.00"
 
