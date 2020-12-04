@@ -33,13 +33,13 @@ int zx7_Compress(char *dest,char *src,int *len,int src_len){
 	int last_x,new_x;
 	int index=1;
 	gfx_SetColor(PROGRESS_BAR_OUTLINE_COLOR);
-	gfx_Rectangle(9,50,302,10);
+	gfx_Rectangle(90,120,140,9);
 	gfx_SetColor(PROGRESS_BAR_COLOR);
-	last_x=10;
+	last_x=91;
 	output_data=dest;
 	output_data[output_index++]=src[0];
 	while ((index=get_optimal(src,src_len,index))<src_len){
-		gfx_FillRectangle(last_x,51,1+(new_x=((300*index)/src_len)+10)-last_x,8);
+		gfx_FillRectangle(last_x,121,1+(new_x=((138*index)/src_len)+91)-last_x,7);
 		last_x=new_x;
 	}
 	write_bit(1);

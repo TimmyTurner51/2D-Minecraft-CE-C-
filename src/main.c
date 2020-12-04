@@ -268,16 +268,31 @@ void WorldEngine(void) {
 
 	gfx_SetTransparentColor(252);
 
+	timeofday = 0;
+	curX = 16*10;
+	curY = 16*4;
+	curPos = (curX / 16) + ((curY / 16) * 200) + 5;
+	playerX = 0;
+	playerY = 0;
+	playerPos = 1;
+	posX = 0;
+	redraw = 1;
+	//set selected block to grass block...
+	blockSel = 1;
+
 	if (appvar = ti_Open(world_file, "r")) {
 		if (!memcmp(ti_GetDataPtr(appvar), "MCCESV", 6)){
+			int data_offset;
 			ti_Seek(6, SEEK_SET, appvar);
-			ti_Read(&playerX, 3, 1, appvar);
-			ti_Read(&playerY, 3, 1, appvar);
-			ti_Read(&playerPos, 3, 1, appvar);
-			ti_Read(&curPos, 3, 1, appvar);
-			ti_Read(&curX, 3, 1, appvar);
-			ti_Read(&curY, 3, 1, appvar);
-			ti_Read(&timeofday, 3, 1, appvar);
+			ti_Read(&data_offset, 3, 1, appvar);
+			if (data_offset >= 3) ti_Read(&playerX, 3, 1, appvar);
+			if (data_offset >= 6) ti_Read(&playerY, 3, 1, appvar);
+			if (data_offset >= 9) ti_Read(&playerPos, 3, 1, appvar);
+			if (data_offset >= 12) ti_Read(&curPos, 3, 1, appvar);
+			if (data_offset >= 15) ti_Read(&curX, 3, 1, appvar);
+			if (data_offset >= 18) ti_Read(&curY, 3, 1, appvar);
+			if (data_offset >= 21) ti_Read(&timeofday, 3, 1, appvar);
+			ti_Seek(data_offset, SEEK_SET, appvar);
 			zx7_Decompress(WorldData, ti_GetDataPtr(appvar));
 			ti_Close(appvar);
 		}
@@ -297,18 +312,6 @@ void WorldEngine(void) {
 			}
 			WorldData[x + (world_ground_height+height)*200] = 1;
 		}
-		timeofday = 0;
-
-		curX = 16*10;
-		curY = 16*4;
-		curPos = (curX / 16) + ((curY / 16) * 200) + 5;
-		playerX = 0;
-		playerY = 0;
-		playerPos = 1;
-		posX = 0;
-		redraw = 1;
-		//set selected block to grass block...
-		blockSel = 1;
 	}
 
 	//draw the world and player sprites, as well as the player cursor... (none of which exist just yet)
@@ -436,7 +439,9 @@ void WorldEngine(void) {
 
 	//save the world data, playerX, playerY, playerPos, curPos, curX, curY, timeofday, etc...
 	if (appvar = ti_Open(world_file, "w")) {
-		ti_Write("MCCESV", 7, 1, appvar);
+		int data_offset;
+		ti_Write("MCCESV", 6, 1, appvar);
+		ti_Write((void*)0xFF0000, 3, 1, appvar);
 		ti_Write(&playerX, 3, 1, appvar);
 		ti_Write(&playerY, 3, 1, appvar);
 		ti_Write(&playerPos, 3, 1, appvar);
@@ -444,7 +449,10 @@ void WorldEngine(void) {
 		ti_Write(&curX, 3, 1, appvar);
 		ti_Write(&curY, 3, 1, appvar);
 		ti_Write(&timeofday, 3, 1, appvar);
+		data_offset = ti_Tell(appvar);
 		compressAndWrite(WorldData, 200*200, appvar);
+		ti_Seek(6, SEEK_SET, appvar);
+		ti_Write(&data_offset, 3, 1, appvar);
 		ti_Close(appvar);
 	}
 	delay(100);
