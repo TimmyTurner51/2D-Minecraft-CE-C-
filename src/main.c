@@ -29,7 +29,7 @@
 
 #include "compressor.h" //zx7 compression routines
 
-#define world_ground_height 64
+//no longer needed...we have length and height vars now... #define world_ground_height 64
 
 	gfx_sprite_t *sprites[64];
 	gfx_sprite_t dummy_sprite = {1,1,0};
@@ -65,9 +65,15 @@ void Achievements(void);
 void WorldEngine(void);
 void survivalinventory(void);
 void creativeInventory(void);
+void StringInput(void);
 
 void drawDirtBackground(int scroll); //save space by drawing the dirt backdrop with a function
 void compressAndWrite(void *data, int len, ti_var_t fp); //this routine compresses using zx7_Compression and huffman coding
+
+	//these may need to stay static, used in both DrawMenu (for new world setup) and WorldEngine...
+	static int24_t worldHeight = 200;
+	static int24_t worldLength = 200;
+	static int24_t worldType = 0;
 
 void main(void) {
 	ti_var_t appvar;
@@ -89,7 +95,13 @@ void main(void) {
 
 void DrawMenu(void) {
 
-	uint24_t CursorY, x, i, option, test, scroll, scrollY, redraw, timer, val, tab;
+	int24_t CursorY, x, i, option, test, scroll, scrollY, redraw, timer, val, tab, worldLength, worldHeight;
+	int24_t gamemode, worldSize, cheats;
+	char *gamemodeStr[3] = {"Survival", "Creative", "Hardcore"};
+	char *worldSizeStr[4] = {"Small", "Medium", "Large", "Infinite"};
+	char *cheatsStr[2] = {"Off", "On"};
+	char *worldTypesStr[3] = {"Standard", "Superflat", "Large Biomes"};
+	char *worldNameStr[1];
 
 	while (1) { //loop this code until this function returns
 		y = 125;
@@ -104,7 +116,7 @@ void DrawMenu(void) {
 				redraw = 0;
 				drawDirtBackground(scroll);
 				gfx_SetTextFGColor(230);
-				gfx_PrintStringXY("DEV_ALPHA v1.0.001", 3, 230);
+				gfx_PrintStringXY("DEV_ALPHA v1.0.003", 3, 230);
 				gfx_SetTextFGColor(0);
 				gfx_ScaledTransparentSprite_NoClip(logo, 32, 20, 2, 2);
 				/* buttons */
@@ -189,39 +201,107 @@ void DrawMenu(void) {
 					}
 				}
 
-
-					//generator...blah, blah, blah, yada yada yadda...
-					
-					/*
-					for (x = 0; x < 20; x++) {
-						for (y = 0; y < 15; y++) {
-							gfx_TransparentSprite(sprites[1], x * 16, y * 16);
+				CursorY = 80;
+				worldNameStr[1] = "My World";
+				gamemode = 0;
+				worldSize = 0;
+				cheats = 0;
+				worldType = 0;
+				redraw = 1;
+				while (!(kb_IsDown(kb_KeyClear))) {
+					if (redraw == 1) {
+						redraw = 0;
+						drawDirtBackground(0);
+						for (y = 80; y < 200; y += 20) {
+							gfx_SetColor(181);
+							gfx_FillRectangle(50, y, 220, 16);
+							gfx_SetColor(0);
+							gfx_Rectangle(50, y, 220, 16);
+							gfx_Rectangle(51, y+1, 218, 14);
 						}
-					}
-					gfx_SetTextFGColor(254);
-					gfx_PrintStringXY("Generating World", 102, 90);
-					gfx_PrintStringXY("Building Terrain", 104, 104);
-					gfx_SetColor(4);
-					gfx_FillRectangle(90, 120, 320-180, 7);
-					gfx_SetColor(0);
-					gfx_Rectangle(90, 120, 320-180, 7);
-					gfx_SetColor(6);
-					gfx_BlitBuffer();
-					*/
-
-
-					/*
-					for (x = 91; x < 320-92; x++) {
-						//green progress bar... for looks at this point
-						gfx_VertLine(x, 121, 5);
-						delay(20);
+						gfx_PrintStringXY("NAME:", 74, 84);
+						gfx_PrintStringXY(worldNameStr[1], 114, 84);
+						gfx_PrintStringXY("Gamemode:", 74, 104);
+						gfx_PrintStringXY(gamemodeStr[gamemode], 144, 104);
+						gfx_PrintStringXY("World Size:", 74, 124);
+						gfx_PrintStringXY(worldSizeStr[worldSize], 154, 124);
+						gfx_PrintStringXY("Cheats:", 74, 144);
+						gfx_PrintStringXY(cheatsStr[cheats], 144, 144);
+						gfx_PrintStringXY("World Type:", 74, 164);
+						gfx_PrintStringXY(worldTypesStr[worldType], 144, 164);
+						gfx_PrintStringXY("Generate", 74, 184);
+						gfx_SetColor(254);
+						gfx_Rectangle(50, CursorY, 220, 16);
+						gfx_Rectangle(51, CursorY + 1, 218, 14);
 						gfx_BlitBuffer();
 					}
-					*/
+					kb_Scan();
+					if (kb_IsDown(kb_KeyUp) && (CursorY > 80)) {
+						CursorY -= 20;
+						redraw = 1;
+					}
+					if (kb_IsDown(kb_KeyDown) && (CursorY < 180)) {
+						CursorY += 20;
+						redraw = 1;
+					}
+					if (kb_IsDown(kb_Key2nd)) {
+						redraw = 1;
+						if (CursorY == 80) {
+							//StringInput();
+						}
+						if (CursorY == 100) {
+							gamemode++;
+							if (gamemode > 2) {
+								gamemode = 0;
+							}
+						}
+						if (CursorY == 120) {
+							worldSize++;
+							if (worldSize > 3) {
+								worldSize = 0;
+							}
+						}
+						if (CursorY == 140) {
+							cheats = (cheats == 0);
+						}
+						if (CursorY == 160) {
+							worldType++;
+							if (worldType > 2) {
+								worldType = 0;
+							}
+						}
+						if (CursorY == 180) {
 
-					//here is where we'll make the world's data appvar(s)...
-					//we need to save pretty much all vars in the void WorldEngine code, and the world data itself...
-				if (!kb_IsDown(kb_KeyClear)){
+							if (worldSize == 0) {
+								worldLength = 100;
+								worldHeight = 100;
+							}
+							if (worldSize == 1) {
+								worldLength = 200;
+								worldHeight = 200;
+							}
+							if (worldSize == 2) {
+								worldLength = 500;
+								worldHeight = 200;
+							}
+							if (worldSize == 3) {
+								//infinite...well, not really... :(
+								worldLength = 10000;
+								worldHeight = 300;
+							}
+
+							WorldEngine();
+
+						}
+					}
+					/*
+					If KEY!=0 and KEY!=15
+						Goto NEWWORLDDRAW
+					}
+					*/
+				}
+
+				if (!kb_IsDown(kb_KeyClear)) {
 					delay(200);
 					kb_Scan();
 					WorldEngine();
@@ -265,75 +345,111 @@ void DrawMenu(void) {
 
 void WorldEngine(void) {
 	ti_var_t appvar;
-	int redraw, x, y, playerX, playerY, playerPos, curX, curY, posX, testA, testB, testC, height;
+	int redraw, x, y, scrollX, scrollY, playerX, playerY, playerPos, curX, curY, posX, playerPosTest, height;
 
 	gfx_SetTransparentColor(252);
 
-	timeofday = 0;
-	curX = 16*10;
-	curY = 16*4;
-	curPos = (curX / 16) + ((curY / 16) * 200) + 5;
-	playerX = 0;
-	playerY = 0;
-	playerPos = 1;
-	posX = 0;
-	redraw = 1;
-	//set selected block to grass block...
-	blockSel = 1;
-
 	if (appvar = ti_Open(world_file, "r")) {
 		if (!memcmp(ti_GetDataPtr(appvar), "MCCESV", 6)){
-			int data_offset;
 			ti_Seek(6, SEEK_SET, appvar);
-			ti_Read(&data_offset, 3, 1, appvar);
-			if (data_offset >= 3) ti_Read(&playerX, 3, 1, appvar);
-			if (data_offset >= 6) ti_Read(&playerY, 3, 1, appvar);
-			if (data_offset >= 9) ti_Read(&playerPos, 3, 1, appvar);
-			if (data_offset >= 12) ti_Read(&curPos, 3, 1, appvar);
-			if (data_offset >= 15) ti_Read(&curX, 3, 1, appvar);
-			if (data_offset >= 18) ti_Read(&curY, 3, 1, appvar);
-			if (data_offset >= 21) ti_Read(&timeofday, 3, 1, appvar);
-			ti_Seek(data_offset, SEEK_SET, appvar);
+			ti_Read(&worldLength, 3, 1, appvar);
+			ti_Read(&worldHeight, 3, 1, appvar);
+			ti_Read(&scrollX, 3, 1, appvar);
+			ti_Read(&scrollY, 3, 1, appvar);
+			ti_Read(&playerX, 3, 1, appvar);
+			ti_Read(&playerY, 3, 1, appvar);
+			ti_Read(&playerPos, 3, 1, appvar);
+			ti_Read(&curPos, 3, 1, appvar);
+			ti_Read(&curX, 3, 1, appvar);
+			ti_Read(&curY, 3, 1, appvar);
+			ti_Read(&timeofday, 3, 1, appvar);
 			zx7_Decompress(WorldData, ti_GetDataPtr(appvar));
 			ti_Close(appvar);
 		}
 	}
 
 	if (!loaded_world) {
-		height = 0;
-		for (x = 0; x < 200; x++) {
-			for (y = world_ground_height + height; y < world_ground_height; y++) { //air
-				WorldData[x+y*200] = 0;
+
+					
+					/*
+					for (x = 0; x < 20; x++) {
+						for (y = 0; y < 15; y++) {
+							gfx_TransparentSprite(sprites[1], x * 16, y * 16);
+						}
+					}
+					gfx_SetTextFGColor(254);
+					gfx_PrintStringXY("Generating World", 102, 90);
+					gfx_PrintStringXY("Building Terrain", 104, 104);
+					gfx_SetColor(4);
+					gfx_FillRectangle(90, 120, 320-180, 7);
+					gfx_SetColor(0);
+					gfx_Rectangle(90, 120, 320-180, 7);
+					gfx_SetColor(6);
+					gfx_BlitBuffer();
+					*/
+
+			height = 20;
+
+			for (x = 0; x < worldLength; x++) {
+
+					if ((worldType != 1) && (randInt(0, 2) == 0)) {
+						height += randInt(-1, 1);
+						if  (height < 1) height += 2;
+					}
+
+				for (y = 0; y < height; y++) {           //air
+					WorldData[x+y*200] = 0;
+				}
+				WorldData[x + (height*200)] = 1;                      //grass
+				for (y = height + 1; y < height + 3; y++){            //dirt
+					WorldData[x+y*200] = 2;
+				}
+				for (y = height + 3; y < worldHeight - (height + 3); y++) {  //stone
+					WorldData[x+y*200] = 11;
+				}
 			}
-			for (y = 0; y < world_ground_height + height - 4; y++) { //stone
-				WorldData[x+y*200] = 11;
-			}
-			for (y = world_ground_height + height - 4; y < world_ground_height + height; y++){ //dirt
-				WorldData[pos] = 2;
-			}
-			WorldData[x + (world_ground_height+height)*200] = 1;
-		}
+
+					/*
+					for (x = 91; x < 320-92; x++) {
+						//green progress bar... for looks at this point
+						gfx_VertLine(x, 121, 5);
+						delay(20);
+						gfx_BlitBuffer();
+					}
+					*/
+
+		timeofday = 0;
+
+		curX = 16*10;
+		curY = 16*4;
+		curPos = (curX / 16) + ((curY / 16) * 200) + 5;
+		playerX = 0;
+		playerY = 0;
+		scrollX = 0;
+		scrollY = 0;
+		posX = 0;
+		redraw = 1;
+		//set selected block to grass block...
+		blockSel = 1;
 	}
 
 	//draw the world and player sprites, as well as the player cursor... (none of which exist just yet)
+
+	gfx_SetDrawBuffer();
 
 	while (1) {
 		kb_Scan();
 
 		if (redraw == 1) {
 			redraw = 0;
-			gfx_SetDrawBuffer();
 			gfx_FillScreen(191);
-			testA = 321 + playerX;
-			testB = 241 + playerY;
-			testC = playerPos;
-			for(y = playerY; y < testB; y+=16) {
-				for(x = playerX; x < testA; x+=16) {
-					//block behaviors, etc. may go here?...
-					if (WorldData[testC] != 0) gfx_TransparentSprite(sprites[WorldData[testC] - 1], x, y);
-					testC++;
+			playerPos = (playerX + (playerY * worldLength));
+			for(y = scrollY; y < 241 + scrollY; y+=16) {
+				for(x = scrollX; x < 321 + scrollX; x+=16) {
+					if (WorldData[playerPos] != 0) gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
+					playerPos++;
 				}
-				testC += 180;
+				playerPos += worldLength - 21;
 			}
 			gfx_SetColor(0);
 			gfx_Rectangle(curX, curY, 16, 16);
@@ -387,50 +503,50 @@ void WorldEngine(void) {
 		}
 
 
-		if ((kb_IsDown(kb_KeyLeft)) && (posX > 0) && (playerPos > 0)) {
+		if ((kb_IsDown(kb_KeyLeft)) && (playerX > 0)) {
 			redraw = 1;
-				if (playerX == 0) {
-					playerX = -16;
+				if (scrollX == 0) {
+					scrollX = -16;
 					posX--;
-					playerPos--;
+					playerX--;
 					curPos--;
 					curX -= 16;
 				}
-			playerX += 2;
+			scrollX += 2;
 			curX += 2;
 		}
-		if ((kb_IsDown(kb_KeyRight)) && (posX < 200)) {
+		if ((kb_IsDown(kb_KeyRight)) && (playerX < worldLength)) {
 			redraw = 1;
-				if (playerX == -16) {
-					playerX = 0;
+				if (scrollX == -16) {
+					scrollX = 0;
 					posX++;
-					playerPos++;
+					playerX++;
 					curPos++;
 					curX += 16;
 				}
-			playerX -= 2;
+			scrollX -= 2;
 			curX -= 2;
 		}
-		if ((kb_IsDown(kb_KeyUp)) && (playerPos - 201 > 0)) {
+		if ((kb_IsDown(kb_KeyUp)) && (playerY > 0)) {
 			redraw = 1;
-				if (playerY == 0) {
-					playerY = -16;
-					playerPos -= 201;
+				if (scrollY == 0) {
+					scrollY = -16;
+					playerY--;
 					curPos -= 201;
 					curY -= 16;
 				}
-			playerY += 2;
+			scrollY += 2;
 			curY += 2;
 		}
-		if ((kb_IsDown(kb_KeyDown)) && (playerPos + 200 < 40000)) {
+		if ((kb_IsDown(kb_KeyDown)) && (playerY < worldHeight)) {
 			redraw = 1;
-				if (playerY == -16) {
-					playerY = 0;
-					playerPos += 201;
+				if (scrollY == -16) {
+					scrollY = 0;
+					playerY++;
 					curPos += 201;
 					curY += 16;
 				}
-			playerY -= 2;
+			scrollY -= 2;
 			curY -= 2;
 		}
 
@@ -440,9 +556,12 @@ void WorldEngine(void) {
 
 	//save the world data, playerX, playerY, playerPos, curPos, curX, curY, timeofday, etc...
 	if (appvar = ti_Open(world_file, "w")) {
-		int data_offset;
-		ti_Write("MCCESV", 6, 1, appvar);
-		ti_Write((void*)0xFF0000, 3, 1, appvar);
+		ti_Write("MCCESV", 7, 1, appvar);
+		ti_Write(&worldLength, 3, 1, appvar);
+		ti_Write(&worldHeight, 3, 1, appvar);
+		ti_Write(&scrollX, 3, 1, appvar);
+		ti_Write(&scrollX, 3, 1, appvar);
+		ti_Write(&scrollY, 3, 1, appvar);
 		ti_Write(&playerX, 3, 1, appvar);
 		ti_Write(&playerY, 3, 1, appvar);
 		ti_Write(&playerPos, 3, 1, appvar);
@@ -450,10 +569,7 @@ void WorldEngine(void) {
 		ti_Write(&curX, 3, 1, appvar);
 		ti_Write(&curY, 3, 1, appvar);
 		ti_Write(&timeofday, 3, 1, appvar);
-		data_offset = ti_Tell(appvar);
 		compressAndWrite(WorldData, 200*200, appvar);
-		ti_Seek(6, SEEK_SET, appvar);
-		ti_Write(&data_offset, 3, 1, appvar);
 		ti_Close(appvar);
 	}
 	delay(100);
@@ -600,3 +716,18 @@ void compressAndWrite(void *data, int len, ti_var_t fp) {
 }
 
 
+void StringInput(void) {
+    const char* chars = "\0\0\0\0\0\0\0\0\0\0\"WRMH\0\0?[VQLG\0\0:ZUPKFC\0 YTOJEB\0\0XSNIDA\0\0\0\0\0\0\0\0";
+    uint24_t key, i = 0;
+    char buffer[50];
+    gfx_Begin();
+    while ((key = os_GetCSC()) != sk_Enter) {
+        if (chars[key]) {
+            buffer[i++] = chars[key];
+            gfx_PrintStringXY(buffer, 1, 1);
+        }
+    }
+
+    delay(100);
+    return;
+}
