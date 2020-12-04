@@ -31,8 +31,8 @@
 
 #define world_ground_height 64
 
-	ti_var_t appvar;
 	gfx_sprite_t *sprites[64];
+	gfx_sprite_t dummy_sprite = {1,1,0};
 
 	//define the world data list
 	char WorldData[200 * 200] = { 0 };
@@ -58,7 +58,7 @@
 	bool loaded_world = 0;
     gfx_TempSprite(logo, 16, 16);
 
-void LoadBlocks(void);
+void LoadBlocks(const char *appvar); //now handled in an assembly function
 void DrawMenu(void);
 void PlayMenu(void);
 void Achievements(void);
@@ -70,10 +70,11 @@ void drawDirtBackground(int scroll); //save space by drawing the dirt backdrop w
 void compressAndWrite(void *data, int len, ti_var_t fp); //this routine compresses using zx7_Compression and huffman coding
 
 void main(void) {
+	ti_var_t appvar;
 	gfx_Begin(); //This sets the default palette, no need to set the palette again
-	gfx_SetClipRegion( -17, -17, 337, 257);
-	LoadBlocks();
 	ti_CloseAll();
+	gfx_SetClipRegion( -17, -17, 337, 257);
+	LoadBlocks("MCCESPR");
 	appvar = ti_Open("MC2DDAT", "r");
 	logo = ti_GetDataPtr(appvar);
 	ti_Close(appvar);
@@ -263,7 +264,7 @@ void DrawMenu(void) {
 }
 
 void WorldEngine(void) {
-
+	ti_var_t appvar;
 	int redraw, x, y, playerX, playerY, playerPos, curX, curY, posX, testA, testB, testC, height;
 
 	gfx_SetTransparentColor(252);
@@ -534,26 +535,7 @@ void creativeInventory(void) {
 
 	redraw = 1;
 	delay(200);
-	return;
 }
-
-
-void LoadBlocks(void) {
-
-	void *ptr;
-	int num = 0;
-	ti_CloseAll();
-	appvar = ti_Open("MCCESPR", "r");
-	ptr = ti_GetDataPtr(appvar) + 3;
-	ti_CloseAll();
-
-	while (num < 64) {
-		sprites[num] = (gfx_sprite_t*)ptr;
-		num++;
-		ptr += 258;
-	}
-}
-
 
 void drawDirtBackground(int scroll) {
 	int scrollY, test;
