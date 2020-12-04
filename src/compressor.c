@@ -19,9 +19,9 @@
 #include "compressor.h"
 
 //Change 0xBF to whatever color you want the progress bar to be
-#define PROGRESS_BAR_COLOR 0xBF
+#define PROGRESS_BAR_COLOR 0x05
 //Change 0xFF to whatever color you want the progress bar's outline to be
-#define PROGRESS_BAR_OUTLINE_COLOR 0xFF
+#define PROGRESS_BAR_OUTLINE_COLOR 0x00
 
 int bit_mask = 0;
 int bit_index = 0;

@@ -114,8 +114,8 @@ void DrawMenu(void) {
 		while (!(kb_IsDown(kb_Key2nd))) { //draw the main menu
 		    kb_Scan();
 			if (redraw == 1) {
-				redraw = 0;
 				drawDirtBackground(scroll);
+				redraw = 0;
 				gfx_SetTextFGColor(230);
 				gfx_PrintStringXY("DEV_ALPHA v1.0.003", 3, 230);
 				gfx_SetTextFGColor(0);
@@ -138,7 +138,6 @@ void DrawMenu(void) {
 			    i = y;
 				gfx_BlitBuffer();
 			}
-			redraw = 1;
 			timer = 0;
 			scroll--;
 			if (scroll < 1) scroll = 16;
@@ -292,7 +291,9 @@ void DrawMenu(void) {
 							}
 
 							WorldEngine();
-
+							delay(200);
+							redraw = 1;
+							break;
 						}
 					}
 					/*
@@ -302,13 +303,6 @@ void DrawMenu(void) {
 					*/
 				}
 
-				if (!kb_IsDown(kb_KeyClear)) {
-					delay(200);
-					kb_Scan();
-					WorldEngine();
-					redraw = 1;
-					continue;
-				}
 			}
 
 			if (y == 150) { //"achievements"
@@ -352,7 +346,9 @@ void WorldEngine(void) {
 
 	if (appvar = ti_Open(world_file, "r")) {
 		if (!memcmp(ti_GetDataPtr(appvar), "MCCESV", 6)){
+			int world_offset;
 			ti_Seek(6, SEEK_SET, appvar);
+			ti_Read(&world_offset, 3, 1, appvar);
 			ti_Read(&worldLength, 3, 1, appvar);
 			ti_Read(&worldHeight, 3, 1, appvar);
 			ti_Read(&scrollX, 3, 1, appvar);
@@ -364,8 +360,12 @@ void WorldEngine(void) {
 			ti_Read(&curX, 3, 1, appvar);
 			ti_Read(&curY, 3, 1, appvar);
 			ti_Read(&timeofday, 3, 1, appvar);
-			zx7_Decompress(WorldData, ti_GetDataPtr(appvar));
+			ti_Read(&hotbarSel, 3, 1, appvar);
+			ti_Read(&hotbar, 5, 3, appvar);
+			ti_Seek(world_offset, SEEK_SET, appvar);
+			zx7_Decompress(&WorldData, ti_GetDataPtr(appvar));
 			ti_Close(appvar);
+			loaded_world = 1;
 		}
 	}
 
@@ -464,7 +464,7 @@ void WorldEngine(void) {
 							gfx_SetColor(0);
 						}
 						gfx_Rectangle(117 + (x * 18), 220, 18, 18);
-						if (hotbar[x] != 0) {
+						if (hotbar[x]) {
 							gfx_TransparentSprite(sprites[hotbar[x] - 1], 118 + (x * 18), 221);
 						}else{
 							gfx_SetColor(181);
@@ -592,7 +592,9 @@ void WorldEngine(void) {
 
 	//save the world data, playerX, playerY, playerPos, curPos, curX, curY, timeofday, etc...
 	if (appvar = ti_Open(world_file, "w")) {
-		ti_Write("MCCESV", 7, 1, appvar);
+		int world_offset;
+		ti_Write("MCCESV", 6, 1, appvar);
+		ti_Write((void*)0xFF0000, 3, 1, appvar); //this is overwritten later
 		ti_Write(&worldLength, 3, 1, appvar);
 		ti_Write(&worldHeight, 3, 1, appvar);
 		ti_Write(&scrollX, 3, 1, appvar);
@@ -606,8 +608,13 @@ void WorldEngine(void) {
 		ti_Write(&curY, 3, 1, appvar);
 		ti_Write(&timeofday, 3, 1, appvar);
 		ti_Write(&hotbarSel, 3, 1, appvar);
-		compressAndWrite(hotbar, 5, appvar);
-		compressAndWrite(WorldData, worldLength * worldHeight, appvar);
+		ti_Write(&hotbar, 5, 3, appvar);
+		world_offset = ti_Tell(appvar);
+		ti_Seek(6, SEEK_SET, appvar);
+		ti_Write(&world_offset, 3, 1, appvar);
+		ti_Seek(world_offset, SEEK_SET, appvar);
+		compressAndWrite(&WorldData, worldLength * worldHeight, appvar);
+		ti_SetArchiveStatus(1, appvar);
 		ti_Close(appvar);
 	}
 	delay(100);
@@ -782,7 +789,8 @@ void compressAndWrite(void *data, int len, ti_var_t fp) {
 	*((int*)0xE30010) = 0xD40000; //force the lcd to use the first half of VRAM so we can use the second half.
 	gfx_SetDrawScreen();
 	drawDirtBackground(0);
-	gfx_PrintStringXY("Compressing data...", 80, 110);
+	gfx_SetTextFGColor(0xDF);
+	gfx_PrintStringXY("Compressing data...", 90, 110);
 
 /* Maybe do huffman coding at some point
 	//start by counting the occurences of each unique byte in the data
