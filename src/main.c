@@ -74,6 +74,7 @@ void compressAndWrite(void *data, int len, ti_var_t fp); //this routine compress
 	static int24_t worldHeight = 200;
 	static int24_t worldLength = 200;
 	static int24_t worldType = 0;
+	static int24_t hotbarSel = 0;
 
 void main(void) {
 	ti_var_t appvar;
@@ -422,12 +423,14 @@ void WorldEngine(void) {
 
 		curX = 16*10;
 		curY = 16*4;
-		curPos = (curX / 16) + ((curY / 16) * 200) + 5;
+		curPos = (curX / 16) + ((curY / 16) * 200);
 		playerX = 0;
 		playerY = 0;
 		scrollX = 0;
 		scrollY = 0;
 		posX = 0;
+		//0 is the first pos in the hotbar array (it's max size is 5 btw)
+		hotbarSel = 0;
 		redraw = 1;
 		//set selected block to grass block...
 		blockSel = 1;
@@ -443,27 +446,60 @@ void WorldEngine(void) {
 		if (redraw == 1) {
 			redraw = 0;
 			gfx_FillScreen(191);
+			gfx_SetColor(0);
 			playerPos = (playerX + (playerY * worldLength));
 			for(y = scrollY; y < 241 + scrollY; y+=16) {
 				for(x = scrollX; x < 321 + scrollX; x+=16) {
-					if (WorldData[playerPos] != 0) gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
+					if (WorldData[playerPos] != 0)   gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
 					playerPos++;
 				}
 				playerPos += worldLength - 21;
 			}
-			gfx_SetColor(0);
-			gfx_Rectangle(curX, curY, 16, 16);
-			gfx_Rectangle(302, 0, 18, 18);
-			if (blockSel != 0) gfx_TransparentSprite(sprites[blockSel - 1], 303, 1);
+				gfx_Rectangle(curX, curY, 16, 16);
+				//hotbar
+					for (x = 0; x < 5; x++) {
+						if (x == hotbarSel) {
+							gfx_SetColor(5);
+						}else{
+							gfx_SetColor(0);
+						}
+						gfx_Rectangle(117 + (x * 18), 220, 18, 18);
+						if (hotbar[x] != 0) {
+							gfx_TransparentSprite(sprites[hotbar[x] - 1], 118 + (x * 18), 221);
+						}else{
+							gfx_SetColor(181);
+							gfx_FillRectangle(118 + (x * 18), 221, 16, 16);
+						}
+					}
 		}
 
 
 		if (kb_IsDown(kb_KeyClear)) break;
 
+		if (kb_IsDown(kb_KeyYequ)) {
+			hotbarSel = 0;
+			redraw = 1;
+		}
+		if (kb_IsDown(kb_KeyWindow)) {
+			hotbarSel = 1;
+			redraw = 1;
+		}
+		if (kb_IsDown(kb_KeyZoom)) {
+			hotbarSel = 2;
+			redraw = 1;
+		}
+		if (kb_IsDown(kb_KeyTrace)) {
+			hotbarSel = 3;
+			redraw = 1;
+		}
+		if (kb_IsDown(kb_KeyGraph)) {
+			hotbarSel = 4;
+			redraw = 1;
+		}
 
 		if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0)) {
 			delay(100);
-			WorldData[curPos] = blockSel;
+			WorldData[curPos] = hotbar[hotbarSel];
 			redraw = 1;
 		}
 		if (kb_IsDown(kb_KeyDel)) {
@@ -492,13 +528,13 @@ void WorldEngine(void) {
 		if ((kb_IsDown(kb_KeyMode)) && (curY > 0)) {
 			delay(100);
 			curY -= 16;
-			curPos -= 201;
+			curPos -= worldLength;
 			redraw = 1;
 		}
 		if ((kb_IsDown(kb_KeyApps)) && (curY < 240)) {
 			delay(100);
 			curY += 16;
-			curPos += 201;
+			curPos += worldLength;
 			redraw = 1;
 		}
 
@@ -532,7 +568,7 @@ void WorldEngine(void) {
 				if (scrollY == 0) {
 					scrollY = -16;
 					playerY--;
-					curPos -= 201;
+					curPos -= worldLength;
 					curY -= 16;
 				}
 			scrollY += 2;
@@ -543,7 +579,7 @@ void WorldEngine(void) {
 				if (scrollY == -16) {
 					scrollY = 0;
 					playerY++;
-					curPos += 201;
+					curPos += worldLength;
 					curY += 16;
 				}
 			scrollY -= 2;
@@ -569,7 +605,9 @@ void WorldEngine(void) {
 		ti_Write(&curX, 3, 1, appvar);
 		ti_Write(&curY, 3, 1, appvar);
 		ti_Write(&timeofday, 3, 1, appvar);
-		compressAndWrite(WorldData, 200*200, appvar);
+		ti_Write(&hotbarSel, 3, 1, appvar);
+		compressAndWrite(hotbar, 5, appvar);
+		compressAndWrite(WorldData, worldLength * worldHeight, appvar);
 		ti_Close(appvar);
 	}
 	delay(100);
@@ -608,7 +646,22 @@ void creativeInventory(void) {
 					}
 				}
 				gfx_SetColor(254);
-				gfx_FillRectangle(selX + 6, selY + 6, 2, 2);
+				gfx_FillRectangle(selX + 6, selY + 6, 3, 3);
+				//hotbar
+					for (x = 0; x < 5; x++) {
+						if (x == hotbarSel) {
+							gfx_SetColor(5);
+						}else{
+							gfx_SetColor(0);
+						}
+						gfx_Rectangle(117 + (x * 18), 220, 18, 18);
+						if (hotbar[x] != 0) {
+							gfx_TransparentSprite(sprites[hotbar[x] - 1], 118 + (x * 18), 221);
+						}else{
+							gfx_SetColor(181);
+							gfx_FillRectangle(118 + (x * 18), 221, 16, 16);
+						}
+					}
 				gfx_BlitBuffer();
 				
 			}
@@ -639,7 +692,61 @@ void creativeInventory(void) {
 			}
 
 			if (kb_IsDown(kb_Key2nd)) {
-				blockSel = posB;
+				
+				delay(130);
+				selX = 0;
+				redraw = 1;
+				kb_Scan();
+				while (!(kb_IsDown(kb_Key2nd))) {
+					if (redraw == 1) {
+						redraw = 0;
+						pos = 0;
+						for (y = 30; y < 10 * 18; y += 18) {
+							for (x = 10; x < 10 * 28; x += 18) {
+								gfx_SetColor(148);
+								gfx_FillRectangle(x, y, 18, 18);
+								gfx_SetColor(0);
+								gfx_Rectangle(x, y, 18, 18);
+								if (pos < 64) gfx_TransparentSprite(sprites[pos++], x + 1, y + 1);
+							}
+						}
+						//hotbar
+							for (x = 0; x < 5; x++) {
+								if (x == selX) {
+									gfx_SetColor(5);
+								}else{
+									gfx_SetColor(0);
+								}
+								gfx_Rectangle(117 + (x * 18), 220, 18, 18);
+								if (hotbar[x] != 0) {
+									gfx_TransparentSprite(sprites[hotbar[x] - 1], 118 + (x * 18), 221);
+								}else{
+									gfx_SetColor(181);
+									gfx_FillRectangle(118 + (x * 18), 221, 16, 16);
+								}
+							}
+						gfx_TransparentSprite(sprites[posB - 1], 118 + (selX * 18), 221);
+						gfx_BlitBuffer();
+					}
+
+					kb_Scan();
+					if ((kb_IsDown(kb_KeyLeft)) && (selX > 0)) {
+						delay(100);
+						selX--;
+						redraw = 1;
+					}
+					if ((kb_IsDown(kb_KeyRight)) && (selX < 5)) {
+						delay(100);
+						selX++;
+						redraw = 1;
+					}
+					if (kb_IsDown(kb_KeyClear)) {
+						creativeInventory();
+					}
+
+				}
+				hotbar[selX] = posB;
+				selX = 10;
 				redraw = 1;
 				delay(200);
 				return;
