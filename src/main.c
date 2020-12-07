@@ -83,7 +83,7 @@ void main(void) {
 	gfx_Begin(); //This sets the default palette, no need to set the palette again
 	ti_CloseAll();
 	gfx_SetClipRegion( -17, -17, 337, 257);
-	LoadBlocks("MCCESPR");
+	LoadBlocks("MCEDEFT");
 	appvar = ti_Open("MC2DDAT", "r");
 	logo = ti_GetDataPtr(appvar);
 	ti_Close(appvar);
