@@ -60,7 +60,7 @@
 
 void LoadBlocks(const char *appvar); //now handled in an assembly function
 void DrawMenu(void);
-void PlayMenu(void);
+void playMenu(void);
 void Achievements(void);
 void WorldEngine(void);
 void survivalinventory(void);
@@ -75,6 +75,8 @@ void compressAndWrite(void *data, int len, ti_var_t fp); //this routine compress
 	static int24_t worldLength = 200;
 	static int24_t worldType = 0;
 	static int24_t hotbarSel = 0;
+	static char *str;
+	static char *seedStr;
 
 void main(void) {
 	ti_var_t appvar;
@@ -98,11 +100,7 @@ void DrawMenu(void) {
 
 	int24_t CursorY, x, i, option, test, scroll, scrollY, redraw, timer, val, tab, worldLength, worldHeight;
 	int24_t gamemode, worldSize, cheats;
-	char *gamemodeStr[3] = {"Survival", "Creative", "Hardcore"};
-	char *worldSizeStr[4] = {"Small", "Medium", "Large", "Infinite"};
-	char *cheatsStr[2] = {"Off", "On"};
-	char *worldTypesStr[3] = {"Standard", "Superflat", "Large Biomes"};
-	char *worldNameStr[1];
+	
 
 	while (1) { //loop this code until this function returns
 		y = 125;
@@ -113,11 +111,11 @@ void DrawMenu(void) {
 		gfx_SetTransparentColor(255);
 		while (!(kb_IsDown(kb_Key2nd))) { //draw the main menu
 		    kb_Scan();
-			if (redraw == 1) {
+
 				drawDirtBackground(scroll);
-				redraw = 0;
+				//redraw = 0;
 				gfx_SetTextFGColor(230);
-				gfx_PrintStringXY("DEV_ALPHA v1.0.003", 3, 230);
+				gfx_PrintStringXY("DEV_ALPHA v1.0.04", 3, 230);
 				gfx_SetTextFGColor(0);
 				gfx_ScaledTransparentSprite_NoClip(logo, 32, 20, 2, 2);
 				/* buttons */
@@ -136,15 +134,13 @@ void DrawMenu(void) {
 				gfx_PrintStringXY("Settings", 130, 180);
 				gfx_PrintStringXY("Quit", 144, 205);
 			    i = y;
+				gfx_SetColor(0);
+				gfx_Rectangle(60, y, 192, 20);
+				gfx_Rectangle(61, y + 1, 190, 18);
 				gfx_BlitBuffer();
-			}
-			timer = 0;
+
 			scroll--;
 			if (scroll < 1) scroll = 16;
-			gfx_SetColor(0);
-			gfx_Rectangle(60, y, 192, 20);
-			gfx_Rectangle(61, y + 1, 190, 18);
-		    gfx_BlitBuffer();
 			if (kb_IsDown(kb_KeyClear)) return;
 		    if (kb_IsDown(kb_KeyUp) && y > 125) {
 		        //delay(150);
@@ -156,13 +152,66 @@ void DrawMenu(void) {
 				redraw = 1;
 		        y += 25;
 		    }
-		    if (kb_IsDown(kb_Key2nd)) option = 1;
+		    
+			if (kb_IsDown(kb_KeyClear)) {
+				break;
+				return;
+			}
+
 		}
 
 		gfx_SetTransparentColor(252);
 
-			if (y == 125) { //"play"
+			if (y == 125) playMenu();
+			if (y == 150) { //"achievements"
+				drawDirtBackground(0);
+				gfx_SetColor(181);
+				gfx_FillCircle(10, 10, 5);
+				gfx_FillCircle(309, 10, 5);
+				gfx_FillCircle(10, 229, 5);
+				gfx_FillCircle(309, 229, 5);
+				gfx_FillRectangle(10, 5, 300, 230);
+				gfx_FillRectangle(5, 10, 310, 220);
+				gfx_SetTextFGColor(0);
+				gfx_PrintStringXY("Achievements:", 20, 15);
+				gfx_SetTextFGColor(255);
+				for (x = 2; x < 18; x++) {
+					for (y = 2; y < 13; y++) {
+						gfx_TransparentSprite(sprites[10], x * 16, y * 16);
+					}
+				}
+				
+				gfx_BlitBuffer();
 
+				while (!(os_GetCSC()));
+
+
+
+			}
+
+			if (y == 175) { //"Settings"
+
+
+			}
+
+			if (y == 200) return;
+	}
+}
+
+
+void playMenu(void) {
+
+		int24_t CursorY, x, i, option, test, scroll, scrollY, redraw, timer, val, tab, worldLength, worldHeight;
+		int24_t gamemode, worldSize, cheats, key;
+		const char* chars = "\0\0\0\0\0\0\0\0\0\0\"WRMH\0\0?[VQLG\0\0:ZUPKFC\0 YTOJEB\0\0XSNIDA\0\0\0\0\0\0\0\0";
+		char *gamemodeStr[3] = {"Survival", "Creative", "Hardcore"};
+		char *worldSizeStr[4] = {"Small", "Medium", "Large", "Infinite"};
+		char *cheatsStr[2] = {"Off", "On"};
+		char *worldTypesStr[3] = {"Standard", "Superflat", "Large Biomes"};
+		char *worldNameStr = "My World";
+		char *seedStr = "Random Seed";
+		//char *oldNameStr[1];
+		//char *oldSeedStr[1];
 				drawDirtBackground(0);
 				gfx_SetTransparentColor(255);
 				tab = 0;
@@ -197,12 +246,12 @@ void DrawMenu(void) {
 						redraw = 1;
 					}
 					if (kb_IsDown(kb_KeyClear)) {
-						break;
+						delay(120);
+						DrawMenu();
 					}
 				}
 
 				CursorY = 80;
-				worldNameStr[1] = "My World";
 				gamemode = 0;
 				worldSize = 0;
 				cheats = 0;
@@ -212,24 +261,26 @@ void DrawMenu(void) {
 					if (redraw == 1) {
 						redraw = 0;
 						drawDirtBackground(0);
-						for (y = 80; y < 200; y += 20) {
+						for (y = 80; y < 220; y += 20) {
 							gfx_SetColor(181);
 							gfx_FillRectangle(50, y, 220, 16);
 							gfx_SetColor(0);
 							gfx_Rectangle(50, y, 220, 16);
 							gfx_Rectangle(51, y+1, 218, 14);
 						}
-						gfx_PrintStringXY("NAME:", 74, 84);
-						gfx_PrintStringXY(worldNameStr[1], 114, 84);
-						gfx_PrintStringXY("Gamemode:", 74, 104);
-						gfx_PrintStringXY(gamemodeStr[gamemode], 144, 104);
-						gfx_PrintStringXY("World Size:", 74, 124);
-						gfx_PrintStringXY(worldSizeStr[worldSize], 154, 124);
-						gfx_PrintStringXY("Cheats:", 74, 144);
-						gfx_PrintStringXY(cheatsStr[cheats], 144, 144);
-						gfx_PrintStringXY("World Type:", 74, 164);
-						gfx_PrintStringXY(worldTypesStr[worldType], 144, 164);
-						gfx_PrintStringXY("Generate", 74, 184);
+						gfx_PrintStringXY("World Name:", 74, 84);
+						gfx_PrintStringXY(worldNameStr, 150, 84);
+						gfx_PrintStringXY("Seed:", 74, 104);
+						gfx_PrintStringXY(seedStr, 114, 104);
+						gfx_PrintStringXY("Gamemode:", 74, 124);
+						gfx_PrintStringXY(gamemodeStr[gamemode], 144, 124);
+						gfx_PrintStringXY("World Size:", 74, 144);
+						gfx_PrintStringXY(worldSizeStr[worldSize], 154, 144);
+						gfx_PrintStringXY("Cheats:", 74, 164);
+						gfx_PrintStringXY(cheatsStr[cheats], 144, 164);
+						gfx_PrintStringXY("World Type:", 74, 184);
+						gfx_PrintStringXY(worldTypesStr[worldType], 150, 184);
+						gfx_PrintStringXY("Generate", 74, 204);
 						gfx_SetColor(254);
 						gfx_Rectangle(50, CursorY, 220, 16);
 						gfx_Rectangle(51, CursorY + 1, 218, 14);
@@ -240,37 +291,60 @@ void DrawMenu(void) {
 						CursorY -= 20;
 						redraw = 1;
 					}
-					if (kb_IsDown(kb_KeyDown) && (CursorY < 180)) {
+					if (kb_IsDown(kb_KeyDown) && (CursorY < 200)) {
 						CursorY += 20;
 						redraw = 1;
 					}
 					if (kb_IsDown(kb_Key2nd)) {
 						redraw = 1;
 						if (CursorY == 80) {
-							//StringInput();
+							while ((key = os_GetCSC()) != sk_Enter) {
+								gfx_SetColor(181);
+								gfx_FillRectangle(0, 0, 320, 20);
+								gfx_PrintStringXY(worldNameStr, 3, 3);
+								gfx_BlitBuffer();
+								if (chars[key]) {
+									worldNameStr += chars[key];
+								}
+								if (kb_IsDown(kb_KeyDel)) memcpy(worldNameStr, worldNameStr, sizeof(worldNameStr - 1));
+							}
+							delay(100);
 						}
 						if (CursorY == 100) {
+							while ((key = os_GetCSC()) != sk_Enter) {
+								gfx_SetColor(181);
+								gfx_FillRectangle(0, 0, 320, 20);
+								gfx_PrintStringXY(seedStr, 3, 3);
+								gfx_BlitBuffer();
+								if (chars[key]) {
+									seedStr += chars[key];
+								}
+								if (kb_IsDown(kb_KeyDel)) memcpy(seedStr, seedStr, sizeof(seedStr - 1));
+							}
+							delay(100);
+						}
+						if (CursorY == 120) {
 							gamemode++;
 							if (gamemode > 2) {
 								gamemode = 0;
 							}
 						}
-						if (CursorY == 120) {
+						if (CursorY == 140) {
 							worldSize++;
 							if (worldSize > 3) {
 								worldSize = 0;
 							}
 						}
-						if (CursorY == 140) {
+						if (CursorY == 160) {
 							cheats = (cheats == 0);
 						}
-						if (CursorY == 160) {
+						if (CursorY == 180) {
 							worldType++;
 							if (worldType > 2) {
 								worldType = 0;
 							}
 						}
-						if (CursorY == 180) {
+						if (CursorY == 200) {
 
 							if (worldSize == 0) {
 								worldLength = 100;
@@ -290,6 +364,8 @@ void DrawMenu(void) {
 								worldHeight = 300;
 							}
 
+							//supposed to take the first 8 letters of the worldName string and copy to world_file
+							memcpy(world_file, worldNameStr, 8);
 							WorldEngine();
 							delay(200);
 							redraw = 1;
@@ -302,41 +378,10 @@ void DrawMenu(void) {
 					}
 					*/
 				}
+				playMenu();
 
-			}
-
-			if (y == 150) { //"achievements"
-				drawDirtBackground(0);
-				gfx_SetColor(181);
-				gfx_FillCircle(10, 10, 5);
-				gfx_FillCircle(309, 10, 5);
-				gfx_FillCircle(10, 229, 5);
-				gfx_FillCircle(309, 229, 5);
-				gfx_FillRectangle(10, 5, 300, 230);
-				gfx_FillRectangle(5, 10, 310, 220);
-				gfx_SetTextFGColor(0);
-				gfx_PrintStringXY("Achievements:", 20, 15);
-				gfx_SetTextFGColor(255);
-				for (x = 2; x < 18; x++) {
-					for (y = 2; y < 13; y++) {
-						gfx_TransparentSprite(sprites[10], x * 16, y * 16);
-					}
-				}
-				
-				gfx_BlitBuffer();
-
-				while (!(os_GetCSC()));
-
-
-
-			}
-
-			if (y == 175) { //"Settings"
-
-
-			}
-	}
 }
+
 
 void WorldEngine(void) {
 	ti_var_t appvar;
@@ -830,19 +875,3 @@ void compressAndWrite(void *data, int len, ti_var_t fp) {
 	ti_Write((void*)0xD52C00, new_len, 1, fp);
 }
 
-
-void StringInput(void) {
-    const char* chars = "\0\0\0\0\0\0\0\0\0\0\"WRMH\0\0?[VQLG\0\0:ZUPKFC\0 YTOJEB\0\0XSNIDA\0\0\0\0\0\0\0\0";
-    uint24_t key, i = 0;
-    char buffer[50];
-    gfx_Begin();
-    while ((key = os_GetCSC()) != sk_Enter) {
-        if (chars[key]) {
-            buffer[i++] = chars[key];
-            gfx_PrintStringXY(buffer, 1, 1);
-        }
-    }
-
-    delay(100);
-    return;
-}
