@@ -21,6 +21,7 @@ _LoadBlocks:
 	inc hl
 	inc hl
 	inc hl
+	inc hl
 	pop bc
 	ld de,_sprites
 	ld bc,258
