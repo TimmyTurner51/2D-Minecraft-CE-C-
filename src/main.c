@@ -31,7 +31,7 @@
 
 //no longer needed...we have length and height vars now... #define world_ground_height 64
 
-	gfx_sprite_t *sprites[64];
+	gfx_sprite_t *sprites[255];
 	gfx_sprite_t dummy_sprite = {1,1,0};
 
 	//define the world data list
@@ -113,7 +113,6 @@ void DrawMenu(void) {
 		    kb_Scan();
 
 				drawDirtBackground(scroll);
-				//redraw = 0;
 				gfx_SetTextFGColor(230);
 				gfx_PrintStringXY("DEV_ALPHA v1.0.04", 3, 230);
 				gfx_SetTextFGColor(0);
@@ -201,26 +200,32 @@ void DrawMenu(void) {
 
 void playMenu(void) {
 
-		int24_t CursorY, x, i, option, test, scroll, scrollY, redraw, timer, val, tab, worldLength, worldHeight;
-		int24_t gamemode, worldSize, cheats, key;
-		const char* chars = "\0\0\0\0\0\0\0\0\0\0\"WRMH\0\0?[VQLG\0\0:ZUPKFC\0 YTOJEB\0\0XSNIDA\0\0\0\0\0\0\0\0";
+		int24_t CursorY, x, i, option, test, scroll, scrollY, redraw, timer, val, tab;
+		int24_t worldLength, worldHeight, gamemode, worldSize, cheats, key, appvar;
+		char* chars = "\0\0\0\0\0\0\0\0\0\0\"WRMH\0\0?[VQLG\0\0:ZUPKFC\0 YTOJEB\0\0XSNIDA\0\0\0\0\0\0\0\0";
 		char *gamemodeStr[3] = {"Survival", "Creative", "Hardcore"};
 		char *worldSizeStr[4] = {"Small", "Medium", "Large", "Infinite"};
 		char *cheatsStr[2] = {"Off", "On"};
 		char *worldTypesStr[3] = {"Standard", "Superflat", "Large Biomes"};
 		char *worldNameStr = "My World";
+		char *oldNameStr = "My World";
 		char *seedStr = "Random Seed";
-		//char *oldNameStr[1];
-		//char *oldSeedStr[1];
+		char *oldSeedStr = "Random Seed";
+		char *worldVars;
+
+				ti_CloseAll();
+				appvar = ti_Open("MC2DwLst", "r");
+				ti_Read(worldVars, ti_GetSize(appvar), 1, appvar);
+				ti_CloseAll();
 				drawDirtBackground(0);
 				gfx_SetTransparentColor(255);
 				tab = 0;
 				CursorY = 40;
-				redraw = 1;
 				kb_Scan();
 				while (!(kb_IsDown(kb_Key2nd))) {
 					kb_Scan();
-					if (redraw == 1) {
+
+						drawDirtBackground(scroll);
 						gfx_SetColor(181);
 						gfx_FillRectangle(20, 20, 280, 200);
 						gfx_SetColor(0);
@@ -231,24 +236,34 @@ void playMenu(void) {
 						gfx_PrintStringXY("My Worlds", 40, 25);
 						gfx_PrintStringXY("Servers", 134, 25);
 						gfx_PrintStringXY("Friends", 240, 25);
-						redraw = 0;
-						gfx_BlitBuffer();
+					
+					if (tab == 1) {
+						if (sizeof(worldVars) < 1) {
+							gfx_PrintStringXY("No Worlds were found!", 40, 40);
+						}else{
+
+						}
+
 					}
+						gfx_BlitBuffer();
+
+					scroll--;
+					if (scroll < 1) scroll = 16;
 
 					if (kb_IsDown(kb_KeyLeft) && (tab > 0)) {
 						delay(200);
 						tab--;
-						redraw = 1;
 					}
 					if (kb_IsDown(kb_KeyRight) && (tab < 2)) {
 						delay(200);
 						tab++;
-						redraw = 1;
 					}
 					if (kb_IsDown(kb_KeyClear)) {
 						delay(120);
 						DrawMenu();
 					}
+
+
 				}
 
 				CursorY = 80;
@@ -298,28 +313,36 @@ void playMenu(void) {
 					if (kb_IsDown(kb_Key2nd)) {
 						redraw = 1;
 						if (CursorY == 80) {
-							while ((key = os_GetCSC()) != sk_Enter) {
-								gfx_SetColor(181);
-								gfx_FillRectangle(0, 0, 320, 20);
-								gfx_PrintStringXY(worldNameStr, 3, 3);
-								gfx_BlitBuffer();
-								if (chars[key]) {
-									worldNameStr += chars[key];
+							i = strlen(worldNameStr);
+								while ((key = os_GetCSC()) != sk_Enter) {
+									gfx_SetColor(181);
+									gfx_FillRectangle(0, 0, 320, 20);
+									gfx_PrintStringXY(worldNameStr, 3, 3);
+									gfx_BlitBuffer();
+									if (chars[key]) {
+										oldNameStr[i++] = chars[key];
+									}
+									if (kb_IsDown(kb_KeyDel) && (i > 1)) {
+										i--;
+										memcpy(&worldNameStr, &oldNameStr, i);
+									}
 								}
-								if (kb_IsDown(kb_KeyDel)) memcpy(worldNameStr, worldNameStr, sizeof(worldNameStr - 1));
-							}
 							delay(100);
 						}
 						if (CursorY == 100) {
+							i = strlen(seedStr);
 							while ((key = os_GetCSC()) != sk_Enter) {
 								gfx_SetColor(181);
 								gfx_FillRectangle(0, 0, 320, 20);
 								gfx_PrintStringXY(seedStr, 3, 3);
 								gfx_BlitBuffer();
 								if (chars[key]) {
-									seedStr += chars[key];
+									oldSeedStr[i++] = chars[key];
 								}
-								if (kb_IsDown(kb_KeyDel)) memcpy(seedStr, seedStr, sizeof(seedStr - 1));
+								if (kb_IsDown(kb_KeyDel) && (i > 1)) {
+									i--;
+									memcpy(&seedStr, &oldSeedStr, i);
+								}
 							}
 							delay(100);
 						}
@@ -365,7 +388,14 @@ void playMenu(void) {
 							}
 
 							//supposed to take the first 8 letters of the worldName string and copy to world_file
+							world_file = "        ";
 							memcpy(world_file, worldNameStr, 8);
+
+							ti_CloseAll();
+							appvar = ti_Open("MC2DwLst", "a");
+							ti_Write(world_file, 8, 1, appvar);
+							ti_CloseAll();
+							
 							WorldEngine();
 							delay(200);
 							redraw = 1;
