@@ -524,11 +524,29 @@ void WorldEngine(void) {
 		if (redraw == 1) {
 			redraw = 0;
 			gfx_FillScreen(191);
-			gfx_SetColor(0);
+			gfx_SetColor(32);
 			playerPos = (playerX + (playerY * worldLength));
 			for(y = scrollY; y < 241 + scrollY; y+=16) {
 				for(x = scrollX; x < 321 + scrollX; x+=16) {
-					if (WorldData[playerPos] != 0)   gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
+					if (playerY > 2) {
+						/* now has basic shadowing */
+						if ((WorldData[playerPos] != 0) && (WorldData[playerPos - worldLength] == 0)) {
+							gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
+						}else{
+							if ((WorldData[playerPos] != 0) && (WorldData[playerPos + worldLength] != 0) && (WorldData[playerPos + 1] != 0) && (WorldData[playerPos - 1] != 0))
+								gfx_FillRectangle(x, y, 16, 16);
+							if ((WorldData[playerPos] != 0) && (WorldData[playerPos + worldLength] == 0))
+								gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
+							if ((WorldData[playerPos - 1] != 0) && (WorldData[playerPos] == 0))
+								gfx_TransparentSprite(sprites[WorldData[playerPos - 1] - 1], x - 16, y);
+							if ((WorldData[playerPos + 1] != 0) && (WorldData[playerPos] == 0))
+								gfx_TransparentSprite(sprites[WorldData[playerPos + 1] - 1], x + 16, y);
+						}
+					}else{
+						if (WorldData[playerPos] != 0) 
+						gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
+					}
+
 					playerPos++;
 				}
 				playerPos += worldLength - 21;
@@ -542,7 +560,7 @@ void WorldEngine(void) {
 							gfx_SetColor(0);
 						}
 						gfx_Rectangle(117 + (x * 18), 220, 18, 18);
-						if (hotbar[x]) {
+						if (hotbar[x] != 0) {
 							gfx_TransparentSprite(sprites[hotbar[x] - 1], 118 + (x * 18), 221);
 						}else{
 							gfx_SetColor(181);
