@@ -31,7 +31,7 @@
 
 //no longer needed...we have length and height vars now... #define world_ground_height 64
 
-	gfx_sprite_t *sprites[255];
+	gfx_sprite_t *sprites[254];
 	gfx_sprite_t dummy_sprite = {1,1,0};
 
 	//define the world data list
@@ -464,6 +464,8 @@ void WorldEngine(void) {
 					gfx_BlitBuffer();
 					*/
 
+				//this is an updated generator, and it to be used with the new textures...we now have bedrock too!
+				//thank u LogicalJoe!!
 			height = 20;
 
 			for (x = 0; x < worldLength; x++) {
@@ -473,16 +475,17 @@ void WorldEngine(void) {
 						if  (height < 1) height += 2;
 					}
 
-				for (y = 0; y < height; y++) {           //air
-					WorldData[x+y*200] = 0;
+				for (y = 0; y < height; y++) {                                 //air
+					WorldData[x+y*worldLength] = 0;
 				}
-				WorldData[x + (height*200)] = 1;                      //grass
-				for (y = height + 1; y < height + 3; y++){            //dirt
-					WorldData[x+y*200] = 2;
+				WorldData[x + (height*worldLength)] = 3;                       //grass
+				for (y = height + 1; y < height + 3; y++){                     //dirt
+					WorldData[x+y*worldLength] = 4;
 				}
-				for (y = height + 3; y < worldHeight - (height + 3); y++) {  //stone
-					WorldData[x+y*200] = 11;
+				for (y = height + 3; y < worldHeight - (height + 3); y++) {    //stone
+					WorldData[x+y*worldLength] = 2;
 				}
+				WorldData[x + worldHeight * worldLength] = 7;                 //bedrock
 			}
 
 					/*
@@ -614,7 +617,7 @@ void WorldEngine(void) {
 		}
 
 
-		if ((kb_IsDown(kb_KeyLeft)) && (playerX > 0)) {
+		if ((kb_IsDown(kb_KeyLeft)) && (playerX > -1)) {
 			redraw = 1;
 				if (scrollX == 0) {
 					scrollX = -16;
@@ -846,7 +849,7 @@ void drawDirtBackground(int scroll) {
 	int scrollY, test;
 	for (test = 0; test < 20; test++) {
 		for (scrollY = scroll; scrollY < 256; scrollY += 16) {
-			gfx_TransparentSprite(sprites[1], test * 16, scrollY - 16);
+			gfx_TransparentSprite(sprites[3], test * 16, scrollY - 16);
 		}
 	}
 }
