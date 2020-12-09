@@ -190,10 +190,43 @@ void DrawMenu(void) {
 
 			if (y == 175) { //"Settings"
 
-
+				x = 10;
+				y = 20;
+				redraw = 1;
+				kb_Scan();
+				while (!(kb_IsDown(kb_KeyClear))) { 
+					if (redraw == 1) {
+						redraw = 0;
+						drawDirtBackground(0);
+						for (i = 20; i < 160; i += 20) {
+							gfx_SetColor(254);
+							if (i = y) gfx_Rectangle(x, y, 140, 16);
+							gfx_SetColor(181);
+							gfx_FillRectangle(10, i, 140, 16);
+							gfx_FillRectangle(190, i, 140, 16);
+						}
+						gfx_BlitBuffer();
+					}
+					kb_Scan();
+					if (kb_IsDown(kb_KeyUp) && (y > 20)) {
+						y -= 20;
+						redraw = 1;
+					}
+					if (kb_IsDown(kb_KeyDown) && (y < 160)) {
+						y += 20;
+						redraw = 1;
+					}
+					if (kb_IsDown(kb_KeyLeft)) {
+						x = 10;
+						redraw = 1;
+					}
+					if (kb_IsDown(kb_KeyRight)) {
+						x = 190;
+						redraw = 1;
+					}
+				}
+				DrawMenu();
 			}
-
-			if (y == 200) return;
 	}
 }
 
@@ -507,6 +540,11 @@ void WorldEngine(void) {
 		scrollX = 0;
 		scrollY = 0;
 		posX = 0;
+		hotbar[0] = 0;
+		hotbar[1] = 0;
+		hotbar[2] = 0;
+		hotbar[3] = 0;
+		hotbar[4] = 0;
 		//0 is the first pos in the hotbar array (it's max size is 5 btw)
 		hotbarSel = 0;
 		redraw = 1;
