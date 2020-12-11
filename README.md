@@ -7,7 +7,7 @@ Platforms: TI-84 Plus CE.
 
 OS versions: You can use anything below OS 5.5.
 
-Version: DEV_ALPHA v1.0.002
+Version: DEV_ALPHA v1.0.004
 
 
 Controls:
