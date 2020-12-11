@@ -62,6 +62,7 @@ bool loaded_world = 0;
 gfx_TempSprite(logo, 16, 16);
 //must remain static
 static uint8_t foundCount; // used to stop the code from finding too many appvars
+static char *worldNameStr = "My World";
 
 void LoadBlocks(const char *appvar); //now handled in an assembly function
 void DrawMenu(void);
@@ -266,7 +267,6 @@ void playMenu(void)
 	char *worldSizeStr[4] = {"Small", "Medium", "Large", "Infinite"};
 	char *cheatsStr[2] = {"Off", "On"};
 	char *worldTypesStr[3] = {"Standard", "Superflat", "Large Biomes"};
-	char *worldNameStr = "My World";
 	char *oldNameStr = "My World";
 	char *seedStr = "Random Seed";
 	char *oldSeedStr = "Random Seed";
@@ -275,13 +275,15 @@ void playMenu(void)
 	gfx_SetTransparentColor(255);
 	tab = 0;
 	CursorY = 40;
+	scroll = 0;
+	i = 0;
 	findWorlds();
 	kb_Scan();
 	while (!(kb_IsDown(kb_KeyClear)))
 	{
 		kb_Scan();
 
-		drawDirtBackground(scroll);
+		drawDirtBackground(0);
 		gfx_SetColor(181);
 		gfx_FillRectangle(20, 20, 280, 200);
 		gfx_SetColor(0);
@@ -299,15 +301,18 @@ void playMenu(void)
 			if (foundCount == 0)
 			{
 				gfx_PrintStringXY("No Worlds were found!", 60, 60);
+			}else{
+				y = 0;
+				for (i = scroll; i < scroll + 2; i++) 
+				{
+				dbg_sprintf(dbgout, "%s", WorldsList[i]);
+					if (i < foundCount) gfx_PrintStringXY(WorldsList[i], 40, 40 + y);
+				y += 20;
+				}
 			}
-			dbg_sprintf(dbgout, "%u", foundCount);
 		}
 
 		gfx_BlitBuffer();
-
-		scroll--;
-		if (scroll < 1)
-			scroll = 16;
 
 		if (kb_IsDown(kb_KeyLeft) && (tab > 0))
 		{
@@ -471,14 +476,9 @@ void playMenu(void)
 
 						//supposed to take the first 8 letters of the worldName string and copy to world_file
 						world_file = "        ";
-						strcpy(world_file, worldNameStr);
+						memcpy(world_file, worldNameStr, 8);
 										
-							dbg_sprintf(dbgout, "%u", world_file);
-
-						ti_CloseAll();
-						appvar = ti_Open("MC2DwLst", "a");
-						ti_Write(world_file, 8, 1, appvar);
-						ti_CloseAll();
+							dbg_sprintf(dbgout, "%s", world_file);
 
 						WorldEngine();
 						delay(200);
@@ -595,9 +595,9 @@ void WorldEngine(void)
 
 		curX = 16 * 10;
 		curY = 16 * 4;
-		curPos = (curX / 16) + ((curY / 16) * 200);
-		playerX = 0;
+		playerX = 1;
 		playerY = 0;
+		curPos = (curX / 16) + ((curY / 16) * 200) - playerX;
 		scrollX = 0;
 		scrollY = 0;
 		posX = 0;
@@ -762,7 +762,7 @@ void WorldEngine(void)
 			redraw = 1;
 		}
 
-		if ((kb_IsDown(kb_KeyLeft)) && (playerX > -1))
+		if ((kb_IsDown(kb_KeyLeft)) && (playerX > 0))
 		{
 			redraw = 1;
 			if (scrollX == 0)
@@ -821,6 +821,11 @@ void WorldEngine(void)
 	}
 
 	//save the world data, playerX, playerY, playerPos, curPos, curX, curY, timeofday, etc...
+		world_file = "        ";
+		memcpy(world_file, worldNameStr, 8);
+
+		dbg_sprintf(dbgout, "%s", world_file);
+
 	if (appvar = ti_Open(world_file, "w"))
 	{
 		int world_offset;
@@ -848,6 +853,9 @@ void WorldEngine(void)
 		ti_SetArchiveStatus(1, appvar);
 		ti_Close(appvar);
 	}
+
+	dbg_sprintf(dbgout, "%u", appvar);
+
 	delay(100);
 }
 
