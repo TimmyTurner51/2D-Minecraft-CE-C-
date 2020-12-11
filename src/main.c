@@ -29,6 +29,9 @@
 
 #include "compressor.h" //zx7 compression routines
 
+
+	
+//static char list[20][9]; memcpy(list[found++], name, 9);
 //no longer needed...we have length and height vars now... #define world_ground_height 64
 
 	gfx_sprite_t *sprites[254];
@@ -40,10 +43,10 @@
 	//hopefully a static 'y' will fix some menu bugs...
 	int16_t x, y, pos;
 	//{ name of world 1, name of world 2, etc. }
-	char WorldsList[20] = { 0 };
+	char WorldsList[20][9];
 	//{ name of server 1, name of server 2, etc. }
-	char Servers[20] = { 0 };
-	char FriendsList[20] = { 0 };
+	char Servers[20][20];
+	char FriendsList[20][20];
 
 	//handle these annoying statics later...
 	int24_t timeofday;
@@ -57,15 +60,19 @@
 	int24_t blockSel;
 	bool loaded_world = 0;
     gfx_TempSprite(logo, 16, 16);
+	//must remain static
+	static uint8_t foundCount; // used to stop the code from finding too many appvars
 
 void LoadBlocks(const char *appvar); //now handled in an assembly function
 void DrawMenu(void);
 void playMenu(void);
+void gameSettings(void);
 void Achievements(void);
 void WorldEngine(void);
 void survivalinventory(void);
 void creativeInventory(void);
 void StringInput(void);
+void findWorlds(void);
 
 void drawDirtBackground(int scroll); //save space by drawing the dirt backdrop with a function
 void compressAndWrite(void *data, int len, ti_var_t fp); //this routine compresses using zx7_Compression and huffman coding
@@ -140,7 +147,7 @@ void DrawMenu(void) {
 
 			scroll--;
 			if (scroll < 1) scroll = 16;
-			if (kb_IsDown(kb_KeyClear)) return;
+			if (kb_IsDown(kb_KeyClear)) break;
 		    if (kb_IsDown(kb_KeyUp) && y > 125) {
 		        //delay(150);
 				redraw = 1;
@@ -151,11 +158,6 @@ void DrawMenu(void) {
 				redraw = 1;
 		        y += 25;
 		    }
-		    
-			if (kb_IsDown(kb_KeyClear)) {
-				break;
-				return;
-			}
 
 		}
 
@@ -176,7 +178,7 @@ void DrawMenu(void) {
 				gfx_SetTextFGColor(255);
 				for (x = 2; x < 18; x++) {
 					for (y = 2; y < 13; y++) {
-						gfx_TransparentSprite(sprites[10], x * 16, y * 16);
+						gfx_TransparentSprite(sprites[1], x * 16, y * 16);
 					}
 				}
 				
@@ -189,47 +191,53 @@ void DrawMenu(void) {
 			}
 
 			if (y == 175) { //"Settings"
-
-				x = 10;
-				y = 20;
-				redraw = 1;
-				kb_Scan();
-				while (!(kb_IsDown(kb_KeyClear))) { 
-					if (redraw == 1) {
-						redraw = 0;
-						drawDirtBackground(0);
-						for (i = 20; i < 160; i += 20) {
-							gfx_SetColor(254);
-							if (i = y) gfx_Rectangle(x, y, 140, 16);
-							gfx_SetColor(181);
-							gfx_FillRectangle(10, i, 140, 16);
-							gfx_FillRectangle(190, i, 140, 16);
-						}
-						gfx_BlitBuffer();
-					}
-					kb_Scan();
-					if (kb_IsDown(kb_KeyUp) && (y > 20)) {
-						y -= 20;
-						redraw = 1;
-					}
-					if (kb_IsDown(kb_KeyDown) && (y < 160)) {
-						y += 20;
-						redraw = 1;
-					}
-					if (kb_IsDown(kb_KeyLeft)) {
-						x = 10;
-						redraw = 1;
-					}
-					if (kb_IsDown(kb_KeyRight)) {
-						x = 190;
-						redraw = 1;
-					}
-				}
-				DrawMenu();
+				gameSettings();
 			}
 	}
+
 }
 
+void gameSettings(void) {
+	
+	int x, y, i, redraw;
+		x = 10;
+		y = 20;
+		redraw = 1;
+		while (!(kb_IsDown(kb_KeyClear))) {
+				if (redraw == 1) {
+					redraw = 0;
+					drawDirtBackground(0);
+					for (i = 20; i < 160; i += 20) {
+						
+						gfx_SetColor(181);
+						gfx_FillRectangle(10, i, 140, 16);
+						gfx_FillRectangle(170, i, 140, 16);
+					}
+					gfx_SetColor(254);
+					gfx_Rectangle(x, y, 140, 16);
+					gfx_Rectangle(x + 1, y + 1, 138, 14);
+					gfx_BlitBuffer();
+				}
+			kb_Scan();
+			if (kb_IsDown(kb_KeyUp) && (y > 20)) {
+				y -= 20;
+				redraw = 1;
+			}
+			if (kb_IsDown(kb_KeyDown) && (y < 160)) {
+				y += 20;
+				redraw = 1;
+			}
+			if (kb_IsDown(kb_KeyLeft)) {
+				x = 10;
+				redraw = 1;
+			}
+			if (kb_IsDown(kb_KeyRight)) {
+				x = 170;
+				redraw = 1;
+			}
+		}
+		DrawMenu();
+}
 
 void playMenu(void) {
 
@@ -244,16 +252,12 @@ void playMenu(void) {
 		char *oldNameStr = "My World";
 		char *seedStr = "Random Seed";
 		char *oldSeedStr = "Random Seed";
-		char *worldVars;
 
-				ti_CloseAll();
-				appvar = ti_Open("MC2DwLst", "r");
-				ti_Read(worldVars, ti_GetSize(appvar), 1, appvar);
-				ti_CloseAll();
 				drawDirtBackground(0);
 				gfx_SetTransparentColor(255);
 				tab = 0;
 				CursorY = 40;
+				findWorlds();
 				kb_Scan();
 				while (!(kb_IsDown(kb_Key2nd))) {
 					kb_Scan();
@@ -270,15 +274,13 @@ void playMenu(void) {
 						gfx_PrintStringXY("Servers", 134, 25);
 						gfx_PrintStringXY("Friends", 240, 25);
 					
-					if (tab == 1) {
-						if (sizeof(worldVars) < 1) {
-							gfx_PrintStringXY("No Worlds were found!", 40, 40);
-						}else{
-
-						}
-
+					if (tab == 0) {
+							i = scrollY;
+							if (foundCount == 0) 
+								gfx_PrintStringXY("No Worlds were found!", 60, 60);
 					}
-						gfx_BlitBuffer();
+					
+					gfx_BlitBuffer();
 
 					scroll--;
 					if (scroll < 1) scroll = 16;
@@ -964,3 +966,101 @@ void compressAndWrite(void *data, int len, ti_var_t fp) {
 	ti_Write((void*)0xD52C00, new_len, 1, fp);
 }
 
+
+
+void findWorlds(void) {
+			
+		#define WORLD_IDENTIFIER "MCCESV"
+		// we have a limit of 10 appvars
+		#define WORLD_COUNT_LIMIT 10
+		char *foundAppvar;
+		void *searchPosition; // used by ti_Detect()
+		// code for world scanning given by KryptonicDragon via cemetech.net			
+		// if you define this somewhere global instead of just in this function, you can also
+		// use "WORLD_IDENTIFIER" in the code that saves worlds.
+		// 
+		// also, this needs to be unique to your program so other programs don't mistake
+		// your worlds for their appvars (or vice versa), but it also shouldn't be too long
+		// since that slows down the search and takes up more space on everyone's calc (remember
+		// that *every single* world appvar has this at the beginning of its data)
+		
+		
+		// documentation states we must set this to NULL to start the search
+		searchPosition = NULL;
+		foundCount = 0;
+		
+		// note how the next line uses = and not ==, because we want to assign what ti_Detect()
+		// returns into the foundAppvar variable. = is for assigning, == is for checking equality
+		// 
+		// this loop will keep running so long as ti_Detect() find something. When it's done,
+		// ti_Detect() will return NULL, which will get put into foundAppvar, and then 
+		// the condition "NULL != (NULL)" will become false and end the loop
+		// 
+		// this loop also stops if we find too many programs (which is set by the "WORLD_COUNT_LIMIT"
+		// define.
+		/*
+		while (foundCount < WORLD_COUNT_LIMIT && NULL != (foundAppvar = ti_Detect(&searchPosition, WORLD_IDENTIFIER))) {
+			// now the foundAppvar variable has a C string of the name of an appvar 
+			// that was found, and we know for sure it's a MC2D world.
+				memcpy(WorldsList[foundCount], foundAppvar, 9);
+				foundCount++;
+		}*/
+					for (;;)
+			{
+				foundAppvar = ti_Detect(&searchPosition, WORLD_IDENTIFIER);
+				if (foundAppvar == NULL)
+				{
+					break;
+				}
+
+				memcpy(WorldsList[foundCount++], foundAppvar, 9);
+				if (foundCount >= WORLD_COUNT_LIMIT)
+				{
+					break;
+				}
+			}
+
+}
+
+/*
+void stuff(void) {
+    // remember to use defines for things that don't change (are constant) and are used throughout
+    // the code to represent something. Using "WORLD_NAME_SIZE" instead of 8 everywhere makes it easier
+    // to understand *why* there's a bunch of 8s everywhere, otherwise it's just a "magic number"
+    #define WORLD_NAMES_APPVAR "MC2DwLst"
+    #define WORLD_NAME_SIZE 8
+ 
+    char *exampleName = "FunWorld"; // for the purposes of this example, this is what we'll append
+ 
+    uint8_t slot; // this will hold the slot number used by the fileioc functions
+ 
+    // first we open the appvar. Note how, since we're appending data on to the end here,
+    // we're using the "a" mode
+    slot = ti_Open(WORLD_NAMES_APPVAR, "a");
+ 
+    // remember to always check if the appvar you just tried to open actually succeded.
+    // The documentation states that ti_Open() returns 0 if it fails.
+    // Always handle error cases since they will make your code less buggy and easier
+    // to debug when there is a bug
+    if (slot) {
+        size_t written; // this variable is what will hold what ti_Write() returns
+ 
+        written = ti_Write(exampleName, WORLD_NAME_SIZE, 1, slot);
+    
+        // this is a safety check. The documentation for ti_Write() says that it returns a number
+        // that should be equal to count. note it says "count", not "size", we gave it a count of
+        // 1 above, so we check if it's 1 here
+        if (written != 1) {
+            // if this code here runs, that means something went wrong and the world name wasn't saved.
+        }
+        
+        // we're done with that appvar, we can close it now. this is more efficient than using ti_CloseAll() and
+        // also only closes what we tell it to, so if we have other code using other slots, they don't get interrupted.
+        ti_Close(slot);
+    } else {
+        // put code here to handle something going wrong. Remember, there's different reasons that
+        // opening an appvar might fail, be sure to consider all of them and what you should do
+        // in those situations.
+    }
+}
+*/
