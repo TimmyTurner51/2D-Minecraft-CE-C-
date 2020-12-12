@@ -65,6 +65,8 @@ static uint8_t foundCount; // used to stop the code from finding too many appvar
 static char *worldNameStr = "My World";
 
 void LoadBlocks(const char *appvar); //now handled in an assembly function
+uint8_t user_input(char *buffer,size_t length); //user input subroutine. src/asm/user_input.asm
+
 void DrawMenu(void);
 void playMenu(void);
 void gameSettings(void);
@@ -72,11 +74,10 @@ void Achievements(void);
 void WorldEngine(void);
 void survivalinventory(void);
 void creativeInventory(void);
-void StringInput(void);
 void findWorlds(void);
 
 void drawDirtBackground(int scroll);					 //save space by drawing the dirt backdrop with a function
-void compressAndWrite(void *data, int len, ti_var_t fp); //this routine compresses using zx7_Compression and huffman coding
+void compressAndWrite(void *data, int len, ti_var_t fp); //this routine compresses using zx7_Compression
 
 //these may need to stay static, used in both DrawMenu (for new world setup) and WorldEngine...
 static int24_t worldHeight = 200;
@@ -194,13 +195,11 @@ void DrawMenu(void)
 
 				while (!(os_GetCSC()))
 
-					DrawMenu();
 			}
 
 			if (y == 175)
 			{ //"Settings"
 				gameSettings();
-				DrawMenu();
 			}
 		}
 	}
@@ -254,7 +253,6 @@ void gameSettings(void)
 			redraw = 1;
 		}
 	}
-	DrawMenu();
 }
 
 void playMenu(void)
@@ -492,10 +490,8 @@ void playMenu(void)
 			}
 			*/
 			}
-			playMenu();
 		}
 	}
-	DrawMenu();
 }
 
 void WorldEngine(void)
@@ -1101,7 +1097,6 @@ void compressAndWrite(void *data, int len, ti_var_t fp)
 	ti_Write((void *)0xD52C00, new_len, 1, fp);
 	gfx_Begin();
 	gfx_SetDrawBuffer();
-	ti_SetArchiveStatus(true, fp);
 }
 
 void findWorlds(void)
