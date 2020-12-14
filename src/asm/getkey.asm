@@ -10,7 +10,7 @@ _getKey:
 	ret z
 	push af
 __getKeyWaitUnpress:
-	call _getKeyAsync
+	call __getKey
 	or a,a
 	jr nz,__getKeyWaitUnpress
 	pop af

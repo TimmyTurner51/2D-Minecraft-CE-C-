@@ -193,7 +193,7 @@ void DrawMenu(void)
 				}
 				gfx_BlitBuffer();
 
-				while (!(os_GetCSC()))
+				while (!(os_GetCSC()));
 
 			}
 
@@ -1144,7 +1144,7 @@ void findWorlds(void)
 			break;
 		}
 
-		memcpy(WorldsList[foundCount++], foundAppvar, 9);
+		memcpy(&WorldsList[foundCount++], foundAppvar, 9);
 		if (foundCount >= WORLD_COUNT_LIMIT)
 		{
 			break;
