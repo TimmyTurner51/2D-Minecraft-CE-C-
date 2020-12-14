@@ -12,7 +12,6 @@
 .ref _gfx_FillRectangle
 .ref _gfx_SetDraw
 .ref _gfx_Blit
-.ref _getKey
 .ref _kb_AnyKey
 
 ;text colors
@@ -136,7 +135,7 @@ __print_overtype:
 	call _gfx_Blit
 	pop bc
 __keys:
-	call _getKey
+	call $02014C ;ti.GetCSC
 	or a,a
 	jq z,__keys
 	push af
