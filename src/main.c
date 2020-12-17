@@ -101,6 +101,7 @@ void main(void)
 	logo = ti_GetDataPtr(appvar);
 	ti_Close(appvar);
 	y = 125;
+	gfx_SetDrawBuffer();
 	MainMenu();
 }
 
@@ -111,7 +112,6 @@ void MainMenu(void)
 	i = y;
 	scroll = 16;
 	redraw = 1;
-	gfx_SetDrawBuffer();
 	gfx_SetTransparentColor(255);
 	while (!(kb_IsDown(kb_Key2nd)))
 	{ //draw the main menu
@@ -633,7 +633,7 @@ void WorldEngine(void)
 		curY = 16 * 4;
 		playerX = 1;
 		playerY = 0;
-		curPos = (curX / 16) + ((curY / 16) * 200) - playerX;
+		curPos = (curX / 16) + ((curY / 16) * worldLength) + playerX;
 		scrollX = 0;
 		scrollY = 0;
 		posX = 0;
