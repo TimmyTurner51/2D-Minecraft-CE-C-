@@ -22,6 +22,9 @@
 #define PROGRESS_BAR_COLOR 0x05
 //Change 0xFF to whatever color you want the progress bar's outline to be
 #define PROGRESS_BAR_OUTLINE_COLOR 0x00
+//next line is put in by TimmyCraft, and changed a little to make only the graphics better. I did NOT change any compression code
+//or remember changing any code that may have broke the compression.
+#define PROGRESS_BAR_INSIDE_COLOR 0xB5
 
 int bit_mask = 0;
 int bit_index = 0;
@@ -34,6 +37,9 @@ int zx7_Compress(char *dest,char *src,int *len,int src_len){
 	int index=1;
 	gfx_SetColor(PROGRESS_BAR_OUTLINE_COLOR);
 	gfx_Rectangle(90,120,140,9);
+	//next 2 lines were put in by TimmyCraft...
+	gfx_SetColor(PROGRESS_BAR_INSIDE_COLOR);
+	gfx_FillRectangle(91,121,138,7);
 	gfx_SetColor(PROGRESS_BAR_COLOR);
 	last_x=91;
 	output_data=dest;
