@@ -65,6 +65,39 @@ gfx_TempSprite(logo, 16, 16);
 uint8_t foundCount; // used to stop the code from finding too many appvars
 uint8_t dayColors[5] = { 191, 158, 125, 51, 9 };
 
+int smoothstone = 1;
+int grass = 2;
+int dirt = 3;
+int cobblestone = 4;
+int oakplank = 5;
+int oaksapling = 6;
+int bedrock = 7;
+int water = 8;
+int nothing1 = 9;
+int lava = 10;
+int nothing2 = 11;
+int sand = 12;
+int gravel = 13;
+int goldore = 14;
+int ironore = 15;
+int coalore = 16;
+int oaklog = 17;
+int oakleaves = 18;
+int sponge = 19;
+int glass = 20;
+int lapizore = 21;
+int lapizblock = 22;
+int dispenser = 23;
+int sandstone = 24;
+int noteblock = 25;
+int bedback = 26;
+int bedfront = 27;
+int redstoneDustOff = 28;
+int redstoneDustOn = 29;
+int regularpistonRightOff = 30;
+int cobweb = 31;
+
+
 void LoadBlocks(const char *appvar);			 //now handled in an assembly function
 uint8_t user_input(char *buffer, size_t length); //user input subroutine. src/asm/user_input.asm
 
@@ -896,12 +929,20 @@ void WorldEngine(void)
 
 void creativeInventory(void)
 {
-	int24_t scroll, redraw, selX, selY, posB, oldBlock, newBlock, timer, selXb, selYb, selPos;
+	int24_t tab, scroll, redraw, selX, selY, posB, oldBlock, newBlock, timer, selXb, selYb, selPos, i;
+	int natureBlocks[13] = { grass, dirt, smoothstone, cobblestone, sand, gravel ,oaklog, oakleaves, bedrock, coalore, ironore, goldore, lapizore };
+	int buildingBlocks[3] = { oakplank, glass, sponge };
+	int redstoning[3] = { redstoneDustOff, noteblock, regularpistonRightOff };
+	int toolsEtc[1] = { bedback };
+
+	int24_t typesvalues[4] = { 13, 3, 3, 1 };
+	
 
 	gfx_FillScreen(dayColors[timeofday / 6000]);
 	selX = 10;
 	selY = 30;
 	posB = 1;
+	tab = 0;
 	oldBlock = 0;
 	newBlock = 0;
 	timer = 0;
@@ -920,9 +961,20 @@ void creativeInventory(void)
 			gfx_FillCircle(309, 229, 5);
 			gfx_FillRectangle(10, 5, 300, 230);
 			gfx_FillRectangle(5, 10, 310, 220);
+			i = 0;
+			for (x = 14; x < 14 + 120; x += 30) {
+				if (tab != i)  gfx_SetColor(148);
+				if (tab == i)  gfx_SetColor(181);
+				gfx_FillRectangle(x, 12, 20, 18);
+				gfx_SetColor(0);
+				gfx_Rectangle(x, 12, 20, 18);
+				if (i == 0) gfx_TransparentSprite(sprites[natureBlocks[0]], x + 7, 16);
+				if (i == 1) gfx_TransparentSprite(sprites[buildingBlocks[0]], x + 7, 16);
+				if (i == 2) gfx_TransparentSprite(sprites[redstoning[0]], x + 7, 16);
+				if (i == 3) gfx_TransparentSprite(sprites[toolsEtc[0]], x + 7, 16);
+				i++;
+			}
 			gfx_SetTextFGColor(0);
-			gfx_PrintStringXY("Inventory:", 14, 14);
-			gfx_SetTextFGColor(255);
 			for (y = 30; y < 10 * 18; y += 18)
 			{
 				for (x = 10; x < 10 * 28; x += 18)
@@ -931,8 +983,12 @@ void creativeInventory(void)
 					gfx_FillRectangle(x, y, 18, 18);
 					gfx_SetColor(0);
 					gfx_Rectangle(x, y, 18, 18);
-					if (pos < 64)
-						gfx_TransparentSprite(sprites[pos++], x + 1, y + 1);
+					if (pos < typesvalues[tab]) {
+						if (tab == 0) gfx_TransparentSprite(sprites[natureBlocks[pos++]], x + 1, y + 1);
+						if (tab == 1) gfx_TransparentSprite(sprites[buildingBlocks[pos++]], x + 1, y + 1);
+						if (tab == 2) gfx_TransparentSprite(sprites[redstoning[pos++]], x + 1, y + 1);
+						if (tab == 3) gfx_TransparentSprite(sprites[toolsEtc[pos++]], x + 1, y + 1);
+					}
 				}
 			}
 			gfx_SetColor(254);
@@ -964,6 +1020,17 @@ void creativeInventory(void)
 		}
 		kb_Scan();
 			
+			if (kb_IsDown(kb_KeyYequ) && (tab > 0)) {
+				tab--;
+				redraw = 1;
+				delay(100);
+			}
+			if (kb_IsDown(kb_KeyGraph) && (tab < 3)) {
+				tab++;
+				redraw = 1;
+				delay(100);
+			}
+
 			if (selY == 211) {
 				if (kb_IsDown(kb_Key2nd))
 				{
