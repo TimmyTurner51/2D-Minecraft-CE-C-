@@ -31,6 +31,7 @@
 
 #include "compressor.h" //zx7 compression routines
 
+
 //static char list[20][9]; memcpy(list[found++], name, 9);
 //no longer needed...we have length and height vars now... #define world_ground_height 64
 
@@ -573,22 +574,18 @@ void WorldEngine(void)
 	if (!loaded_world)
 	{
 
-		/*
-					for (x = 0; x < 20; x++) {
-						for (y = 0; y < 15; y++) {
-							gfx_TransparentSprite(sprites[1], x * 16, y * 16);
-						}
-					}
-					gfx_SetTextFGColor(254);
-					gfx_PrintStringXY("Generating World", 102, 90);
-					gfx_PrintStringXY("Building Terrain", 104, 104);
-					gfx_SetColor(4);
-					gfx_FillRectangle(90, 120, 320-180, 7);
-					gfx_SetColor(0);
-					gfx_Rectangle(90, 120, 320-180, 7);
-					gfx_SetColor(6);
-					gfx_BlitBuffer();
-					*/
+
+		drawDirtBackground(0);
+		gfx_SetTextFGColor(254);
+		gfx_PrintStringXY("Generating World", 102, 90);
+		gfx_PrintStringXY("Building Terrain", 104, 104);
+		gfx_SetColor(148);
+		gfx_FillRectangle(90, 120, 320-180, 7);
+		gfx_SetColor(0);
+		gfx_Rectangle(90, 120, 320-180, 7);
+		gfx_SetColor(6);
+		gfx_BlitBuffer();
+					
 
 		//this is an updated generator, and it to be used with the new textures...we now have bedrock too!
 		//thank u LogicalJoe!!
@@ -620,14 +617,14 @@ void WorldEngine(void)
 			WorldData[x + worldHeight * worldLength] = 7; //bedrock
 		}
 
-		/*
-					for (x = 91; x < 320-92; x++) {
-						//green progress bar... for looks at this point
-						gfx_VertLine(x, 121, 5);
-						delay(20);
-						gfx_BlitBuffer();
-					}
-					*/
+		
+		for (x = 91; x < 320-92; x++) {
+			//green progress bar... for looks at this point
+			gfx_VertLine(x, 121, 5);
+			delay(20);
+			gfx_BlitBuffer();
+		}
+		
 
 		timeofday = 0;
 
