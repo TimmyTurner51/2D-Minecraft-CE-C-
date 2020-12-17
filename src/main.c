@@ -62,6 +62,7 @@ bool loaded_world = 0;
 gfx_TempSprite(logo, 16, 16);
 
 uint8_t foundCount; // used to stop the code from finding too many appvars
+uint8_t dayColors[5] = { 191, 158, 125, 51, 9 };
 
 void LoadBlocks(const char *appvar);			 //now handled in an assembly function
 uint8_t user_input(char *buffer, size_t length); //user input subroutine. src/asm/user_input.asm
@@ -215,8 +216,8 @@ void Achievements(void)
 	}
 	gfx_BlitBuffer();
 
-	while (!(os_GetCSC()))
-		;
+	while (!(os_GetCSC()));
+	delay(100);
 }
 
 void Settings(void)
@@ -231,7 +232,7 @@ void Settings(void)
 		{
 			redraw = 0;
 			drawDirtBackground(0);
-			for (i = 20; i < 160; i += 20)
+			for (i = 20; i < 180; i += 20)
 			{
 				gfx_SetColor(181);
 				gfx_FillRectangle(10, i, 140, 16);
@@ -264,6 +265,7 @@ void Settings(void)
 			redraw = 1;
 		}
 	}
+	delay(100);
 }
 
 void playMenu(void)
@@ -537,7 +539,7 @@ void playMenu(void)
 void WorldEngine(void)
 {
 	ti_var_t appvar;
-	int redraw, x, y, scrollX, scrollY, playerX, playerY, playerPos, curX, curY, posX, playerPosTest, height;
+	int24_t redraw, x, y, scrollX, scrollY, playerX, playerY, playerPos, curX, curY, posX, playerPosTest, height;
 
 	gfx_SetTransparentColor(252);
 
@@ -660,7 +662,7 @@ void WorldEngine(void)
 		if (redraw == 1)
 		{
 			redraw = 0;
-			gfx_FillScreen(191);
+			gfx_FillScreen(dayColors[timeofday / 6000]);
 			gfx_SetColor(32);
 			playerPos = (playerX + (playerY * worldLength));
 			for (y = scrollY; y < 241 + scrollY; y += 16)
@@ -853,6 +855,7 @@ void WorldEngine(void)
 			curY -= 2;
 		}
 
+		timeofday++;
 		gfx_BlitBuffer();
 	}
 
@@ -869,7 +872,6 @@ void WorldEngine(void)
 		ti_Write((void *)0xFF0000, 3, 1, appvar); //this is overwritten later
 		ti_Write(&worldLength, 3, 1, appvar);
 		ti_Write(&worldHeight, 3, 1, appvar);
-		ti_Write(&scrollX, 3, 1, appvar);
 		ti_Write(&scrollX, 3, 1, appvar);
 		ti_Write(&scrollY, 3, 1, appvar);
 		ti_Write(&playerX, 3, 1, appvar);
@@ -897,30 +899,33 @@ void WorldEngine(void)
 
 void creativeInventory(void)
 {
+	int24_t scroll, redraw, selX, selY, posB, oldBlock, newBlock, timer, selXb, selYb, selPos;
 
-	int24_t scroll, redraw, selX, selY, posB;
-	gfx_SetDrawBuffer();
-	gfx_SetColor(181);
-	gfx_FillCircle(10, 10, 5);
-	gfx_FillCircle(309, 10, 5);
-	gfx_FillCircle(10, 229, 5);
-	gfx_FillCircle(309, 229, 5);
-	gfx_FillRectangle(10, 5, 300, 230);
-	gfx_FillRectangle(5, 10, 310, 220);
-	gfx_SetTextFGColor(0);
-	gfx_PrintStringXY("Inventory:", 14, 14);
-	gfx_SetTextFGColor(255);
+	gfx_FillScreen(dayColors[timeofday / 6000]);
 	selX = 10;
 	selY = 30;
 	posB = 1;
+	oldBlock = 0;
+	newBlock = 0;
+	timer = 0;
 	redraw = 1;
 	while (!(kb_IsDown(kb_KeyClear)))
 	{
-		kb_Scan();
 		if (redraw == 1)
 		{
+			timer = 0;
 			redraw = 0;
 			pos = 0;
+			gfx_SetColor(181);
+			gfx_FillCircle(10, 10, 5);
+			gfx_FillCircle(309, 10, 5);
+			gfx_FillCircle(10, 229, 5);
+			gfx_FillCircle(309, 229, 5);
+			gfx_FillRectangle(10, 5, 300, 230);
+			gfx_FillRectangle(5, 10, 310, 220);
+			gfx_SetTextFGColor(0);
+			gfx_PrintStringXY("Inventory:", 14, 14);
+			gfx_SetTextFGColor(255);
 			for (y = 30; y < 10 * 18; y += 18)
 			{
 				for (x = 10; x < 10 * 28; x += 18)
@@ -946,124 +951,120 @@ void creativeInventory(void)
 				{
 					gfx_SetColor(0);
 				}
-				gfx_Rectangle(117 + (x * 18), 220, 18, 18);
+				gfx_Rectangle(117 + (x * 18), 210, 18, 18);
 				if (hotbar[x] != 0)
 				{
-					gfx_TransparentSprite(sprites[hotbar[x] - 1], 118 + (x * 18), 221);
+					gfx_TransparentSprite(sprites[hotbar[x] - 1], 118 + (x * 18), 211);
 				}
 				else
 				{
-					gfx_SetColor(181);
-					gfx_FillRectangle(118 + (x * 18), 221, 16, 16);
+					gfx_SetColor(148);
+					gfx_FillRectangle(118 + (x * 18), 211, 16, 16);
 				}
 			}
+			if (newBlock != 0) gfx_TransparentSprite(sprites[newBlock - 1], selX + 8, selY + 8);
 			gfx_BlitBuffer();
 		}
-
-		if ((kb_IsDown(kb_KeyUp)) && (selY > 30))
-		{
-			selY -= 18;
-			posB -= 15;
-			redraw = 1;
-			delay(80);
-		}
-		if ((kb_IsDown(kb_KeyDown)) && (selY < 10 * 18))
-		{
-			selY += 18;
-			posB += 15;
-			redraw = 1;
-			delay(80);
-		}
-		if ((kb_IsDown(kb_KeyLeft)) && (selX > 10))
-		{
-			selX -= 18;
-			posB--;
-			redraw = 1;
-			delay(80);
-		}
-		if ((kb_IsDown(kb_KeyRight)) && (selX < 28 * 18))
-		{
-			selX += 18;
-			posB++;
-			redraw = 1;
-			delay(80);
-		}
-
-		if (kb_IsDown(kb_Key2nd))
-		{
-
-			delay(130);
-			selX = 0;
-			redraw = 1;
-			kb_Scan();
-			while (!(kb_IsDown(kb_Key2nd)))
-			{
-				if (redraw == 1)
+		kb_Scan();
+			
+			if (selY == 211) {
+				if (kb_IsDown(kb_Key2nd))
 				{
-					redraw = 0;
-					pos = 0;
-					for (y = 30; y < 10 * 18; y += 18)
-					{
-						for (x = 10; x < 10 * 28; x += 18)
-						{
-							gfx_SetColor(148);
-							gfx_FillRectangle(x, y, 18, 18);
-							gfx_SetColor(0);
-							gfx_Rectangle(x, y, 18, 18);
-							if (pos < 64)
-								gfx_TransparentSprite(sprites[pos++], x + 1, y + 1);
-						}
-					}
-					//hotbar
-					for (x = 0; x < 5; x++)
-					{
-						if (x == selX)
-						{
-							gfx_SetColor(5);
-						}
-						else
-						{
-							gfx_SetColor(0);
-						}
-						gfx_Rectangle(117 + (x * 18), 220, 18, 18);
-						if (hotbar[x] != 0)
-						{
-							gfx_TransparentSprite(sprites[hotbar[x] - 1], 118 + (x * 18), 221);
-						}
-						else
-						{
-							gfx_SetColor(181);
-							gfx_FillRectangle(118 + (x * 18), 221, 16, 16);
-						}
-					}
-					gfx_TransparentSprite(sprites[posB - 1], 118 + (selX * 18), 221);
-					gfx_BlitBuffer();
-				}
-
-				kb_Scan();
-				if ((kb_IsDown(kb_KeyLeft)) && (selX > 0))
-				{
-					delay(100);
-					selX--;
+					oldBlock = hotbar[posB];
+					hotbar[posB] = newBlock;
+					newBlock = oldBlock;
+					oldBlock = 0;
 					redraw = 1;
-				}
-				if ((kb_IsDown(kb_KeyRight)) && (selX < 5))
-				{
 					delay(100);
-					selX++;
+				}
+			}else{
+				if (kb_IsDown(kb_Key2nd) && (newBlock != 0) && (selY != 211)) {
+
+					newBlock = oldBlock;
 					redraw = 1;
+					delay(100);
 				}
-				if (kb_IsDown(kb_KeyClear))
-				{
-					creativeInventory();
+				
+				if (kb_IsDown(kb_Key2nd) && (newBlock == 0) && (selY != 211)) {
+					newBlock = posB;
+					redraw = 1;
+					delay(100);
 				}
+
 			}
-			hotbar[selX] = posB;
-			selX = 10;
-			redraw = 1;
-			delay(200);
-			return;
+
+		if (selY < 9 * 18)
+		{
+			if ((kb_IsDown(kb_KeyLeft)) && (selX > 10))
+			{
+				selX -= 18;
+				posB--;
+				redraw = 1;
+				delay(80);
+			}
+			if ((kb_IsDown(kb_KeyRight)) && (selX < 14 * 18))
+			{
+				selX += 18;
+				posB++;
+				redraw = 1;
+				delay(80);
+			}
+		}else{
+			if (kb_IsDown(kb_KeyLeft) && (selX > 117))
+			{
+				posB--;
+				selX -= 18;
+				redraw = 1;
+				delay(80);
+			}
+			if (kb_IsDown(kb_KeyRight) && (selX < 189))
+			{
+				posB++;
+				selX += 18;
+				redraw = 1;
+				delay(80);
+			}
 		}
+		
+
+		if (kb_IsDown(kb_KeyUp) && (selY == 211))
+		{
+				selX = selXb;
+				selY = selYb - 18;
+				posB = selPos - 15;
+				redraw = 1;
+				delay(80);
+		}
+
+		if ((kb_IsDown(kb_KeyUp)) && (selY > 30) && (selY < 10 * 18))
+		{
+				selY -= 18;
+				posB -= 15;
+				redraw = 1;
+				delay(80);
+		}
+		if (kb_IsDown(kb_KeyDown))
+		{
+			if (selY < 220)
+				{
+					selY += 18;
+					posB += 15;
+					redraw = 1;
+					delay(80);
+				}
+			if (selY == 30 + 9 * 18)
+				{
+					selXb = selX;
+					selYb = selY;
+					selPos = posB;
+					selX = 117;
+					selY = 211;
+					posB = 0;
+					redraw = 1;
+					delay(80);
+				}
+		}
+
 	}
 
 	redraw = 1;
@@ -1097,7 +1098,7 @@ void compressAndWrite(void *data, int len, ti_var_t fp)
 	gfx_SetDrawScreen();
 	drawDirtBackground(0);
 	gfx_SetTextFGColor(0xDF);
-	gfx_PrintStringXY("Compressing data...", 90, 110);
+	gfx_PrintStringXY("Saving World...", 113, 110);
 
 	/* Maybe do huffman coding at some point
 	//start by counting the occurences of each unique byte in the data
