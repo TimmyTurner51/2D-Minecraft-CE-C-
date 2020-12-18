@@ -27,7 +27,7 @@
 #include <debug.h>
 
 //no need for this unless there's actual gfx data that needs to be written to the program :P
-//#include "gfx/gfx.h"
+#include "gfx/gfx.h"
 
 #include "compressor.h" //zx7 compression routines
 
@@ -754,6 +754,10 @@ void WorldEngine(void)
 					gfx_FillRectangle(118 + (x * 18), 221, 16, 16);
 				}
 			}
+
+			gfx_TransparentSprite(Head_1, 16 * 9 + 2, 16 * 5 + 14);
+			gfx_TransparentSprite(Body_1, 16 * 9 + 4, 16 * 5 + 22);
+			gfx_TransparentSprite(Leg_1, 16 * 9 + 4, 16 * 5 + 33);
 		}
 
 		if (kb_IsDown(kb_KeyClear))
