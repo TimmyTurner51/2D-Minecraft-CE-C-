@@ -31,7 +31,6 @@
 
 #include "compressor.h" //zx7 compression routines
 
-
 //static char list[20][9]; memcpy(list[found++], name, 9);
 //no longer needed...we have length and height vars now... #define world_ground_height 64
 
@@ -63,40 +62,46 @@ bool loaded_world = 0;
 gfx_TempSprite(logo, 16, 16);
 
 uint8_t foundCount; // used to stop the code from finding too many appvars
-uint8_t dayColors[5] = { 191, 158, 125, 51, 9 };
+uint8_t dayColors[5] = {191, 158, 125, 51, 9};
 
-int smoothstone = 1;
-int grass = 2;
-int dirt = 3;
-int cobblestone = 4;
-int oakplank = 5;
-int oaksapling = 6;
-int bedrock = 7;
-int water = 8;
-int nothing1 = 9;
-int lava = 10;
-int nothing2 = 11;
-int sand = 12;
-int gravel = 13;
-int goldore = 14;
-int ironore = 15;
-int coalore = 16;
-int oaklog = 17;
-int oakleaves = 18;
-int sponge = 19;
-int glass = 20;
-int lapizore = 21;
-int lapizblock = 22;
-int dispenser = 23;
-int sandstone = 24;
-int noteblock = 25;
-int bedback = 26;
-int bedfront = 27;
-int redstoneDustOff = 28;
-int redstoneDustOn = 29;
-int regularpistonRightOff = 30;
-int cobweb = 31;
+#define SMOOTHSTONE 1
+#define GRASS 2
+#define DIRT 3
+#define COBBLESTONE 4
+#define OAKPLANK 5
+#define OAKSAPLING 6
+#define BEDROCK 7
+#define WATER 8
+#define NOTHING1 9
+#define LAVA 10
+#define NOTHING2 11
+#define SAND 12
+#define GRAVEL 13
+#define GOLDORE 14
+#define IRONORE 15
+#define COALORE 16
+#define OAKLOGS 17
+#define OAKLEAVES 18
+#define SPONGE 19
+#define GLASS 20
+#define LAPIZORE 21
+#define LAPIZBLOCK 22
+#define DISPENSER 23
+#define SANDSTONE 24
+#define NOTEBLOCK 25
+#define BEDBACK 26
+#define BEDFRONT 27
+#define REDSTONEDUSTOFF 28
+#define REDSTONEDUSTON 29
+#define REGULARPISTONRIGHTOFF 30
+#define COBWEB 31
 
+int natureBlocks[13] = {GRASS, DIRT, SMOOTHSTONE, COBBLESTONE, SAND, GRAVEL, OAKLOGS, OAKLEAVES, BEDROCK, COALORE, IRONORE, GOLDORE, LAPIZORE};
+int buildingBlocks[3] = {OAKPLANK, GLASS, SPONGE};
+int redstoning[3] = {REDSTONEDUSTOFF, NOTEBLOCK, REGULARPISTONRIGHTOFF};
+int toolsEtc[1] = { BEDBACK };
+
+int typesvalues[4] = {13, 3, 3, 1};
 
 void LoadBlocks(const char *appvar);			 //now handled in an assembly function
 uint8_t user_input(char *buffer, size_t length); //user input subroutine. src/asm/user_input.asm
@@ -250,7 +255,8 @@ void Achievements(void)
 	}
 	gfx_BlitBuffer();
 
-	while (!(os_GetCSC()));
+	while (!(os_GetCSC()))
+		;
 	delay(100);
 }
 
@@ -607,18 +613,16 @@ void WorldEngine(void)
 	if (!loaded_world)
 	{
 
-
 		drawDirtBackground(0);
 		gfx_SetTextFGColor(254);
 		gfx_PrintStringXY("Generating World", 102, 90);
 		gfx_PrintStringXY("Building Terrain", 104, 104);
 		gfx_SetColor(148);
-		gfx_FillRectangle(90, 120, 320-180, 7);
+		gfx_FillRectangle(90, 120, 320 - 180, 7);
 		gfx_SetColor(0);
-		gfx_Rectangle(90, 120, 320-180, 7);
+		gfx_Rectangle(90, 120, 320 - 180, 7);
 		gfx_SetColor(6);
 		gfx_BlitBuffer();
-					
 
 		//this is an updated generator, and it to be used with the new textures...we now have bedrock too!
 		//thank u LogicalJoe!!
@@ -650,14 +654,13 @@ void WorldEngine(void)
 			WorldData[x + worldHeight * worldLength] = 7; //bedrock
 		}
 
-		
-		for (x = 91; x < 320-92; x++) {
+		for (x = 91; x < 320 - 92; x++)
+		{
 			//green progress bar... for looks at this point
 			gfx_VertLine(x, 121, 5);
 			delay(20);
 			gfx_BlitBuffer();
 		}
-		
 
 		timeofday = 0;
 
@@ -743,7 +746,7 @@ void WorldEngine(void)
 				gfx_Rectangle(117 + (x * 18), 220, 18, 18);
 				if (hotbar[x] != 0)
 				{
-					gfx_TransparentSprite(sprites[hotbar[x] - 1], 118 + (x * 18), 221);
+					gfx_TransparentSprite(sprites[hotbar[x]], 118 + (x * 18), 221);
 				}
 				else
 				{
@@ -785,7 +788,7 @@ void WorldEngine(void)
 		if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0))
 		{
 			delay(100);
-			WorldData[curPos] = hotbar[hotbarSel];
+			WorldData[curPos] = hotbar[hotbarSel] + 1;
 			redraw = 1;
 		}
 		if (kb_IsDown(kb_KeyDel))
@@ -929,16 +932,10 @@ void WorldEngine(void)
 
 void creativeInventory(void)
 {
-	int24_t tab, scroll, redraw, selX, selY, posB, oldBlock, newBlock, timer, selXb, selYb, selPos, i;
-	int natureBlocks[13] = { grass, dirt, smoothstone, cobblestone, sand, gravel ,oaklog, oakleaves, bedrock, coalore, ironore, goldore, lapizore };
-	int buildingBlocks[3] = { oakplank, glass, sponge };
-	int redstoning[3] = { redstoneDustOff, noteblock, regularpistonRightOff };
-	int toolsEtc[1] = { bedback };
-
-	int24_t typesvalues[4] = { 13, 3, 3, 1 };
-	
-
+	int24_t tab, scroll, redraw, selX, selY, posB, oldBlock, newBlock, timer, selXb, selYb, selPos, i, maxSize;
+	char *names[4] = { "Nature", "Building", "Redstone", "Tools" };
 	gfx_FillScreen(dayColors[timeofday / 6000]);
+	gfx_SetTextFGColor(0);
 	selX = 10;
 	selY = 30;
 	posB = 1;
@@ -953,7 +950,7 @@ void creativeInventory(void)
 		{
 			timer = 0;
 			redraw = 0;
-			pos = 0;
+			maxSize = typesvalues[tab];
 			gfx_SetColor(181);
 			gfx_FillCircle(10, 10, 5);
 			gfx_FillCircle(309, 10, 5);
@@ -961,19 +958,39 @@ void creativeInventory(void)
 			gfx_FillCircle(309, 229, 5);
 			gfx_FillRectangle(10, 5, 300, 230);
 			gfx_FillRectangle(5, 10, 310, 220);
-			i = 0;
-			for (x = 14; x < 14 + 120; x += 30) {
-				if (tab != i)  gfx_SetColor(148);
-				if (tab == i)  gfx_SetColor(181);
-				gfx_FillRectangle(x, 12, 20, 18);
+			i = (tab != 0);
+			pos = 14 + ((tab != 0) * 20);
+			for (x = pos; x < pos + (3 * 82); x += 82)
+			{
+				if (tab != i)
+					gfx_SetColor(148);
+				if (tab == i)
+					gfx_SetColor(181);
+				gfx_FillRectangle(x, 11, 82, 20);
 				gfx_SetColor(0);
-				gfx_Rectangle(x, 12, 20, 18);
-				if (i == 0) gfx_TransparentSprite(sprites[natureBlocks[0]], x + 7, 16);
-				if (i == 1) gfx_TransparentSprite(sprites[buildingBlocks[0]], x + 7, 16);
-				if (i == 2) gfx_TransparentSprite(sprites[redstoning[0]], x + 7, 16);
-				if (i == 3) gfx_TransparentSprite(sprites[toolsEtc[0]], x + 7, 16);
+				gfx_Rectangle(x, 11, 82, 20);
+				gfx_PrintStringXY(names[i], x + 18, 16);
+				if (i == 0)
+					gfx_TransparentSprite(sprites[natureBlocks[0]], x + 1, 12);
+				if (i == 1)
+					gfx_TransparentSprite(sprites[buildingBlocks[0]], x + 1, 12);
+				if (i == 2)
+					gfx_TransparentSprite(sprites[redstoning[0]], x + 1, 12);
+				if (i == 3)
+					gfx_TransparentSprite(sprites[toolsEtc[0]], x + 1, 12);
 				i++;
 			}
+			gfx_SetColor(148);
+			if (tab < 1) gfx_FillRectangle(x, 11, 20, 20);
+			if (tab > 0) gfx_FillRectangle(14, 11, 20, 20);
+			gfx_SetColor(0);
+			if (tab < 1) gfx_Rectangle(x, 11, 20, 20);
+			if (tab > 0) gfx_Rectangle(14, 11, 20, 20);
+			gfx_SetColor(4);
+			if (tab < 1) gfx_FillTriangle(x + 6, 15, x + 6, 25, x + 14, 20);
+			if (tab > 0) gfx_FillTriangle(28, 15, 28, 25, 19, 20);
+			pos = 0;
+			
 			gfx_SetTextFGColor(0);
 			for (y = 30; y < 10 * 18; y += 18)
 			{
@@ -983,11 +1000,16 @@ void creativeInventory(void)
 					gfx_FillRectangle(x, y, 18, 18);
 					gfx_SetColor(0);
 					gfx_Rectangle(x, y, 18, 18);
-					if (pos < typesvalues[tab]) {
-						if (tab == 0) gfx_TransparentSprite(sprites[natureBlocks[pos++]], x + 1, y + 1);
-						if (tab == 1) gfx_TransparentSprite(sprites[buildingBlocks[pos++]], x + 1, y + 1);
-						if (tab == 2) gfx_TransparentSprite(sprites[redstoning[pos++]], x + 1, y + 1);
-						if (tab == 3) gfx_TransparentSprite(sprites[toolsEtc[pos++]], x + 1, y + 1);
+					if (pos < typesvalues[tab])
+					{
+						if (tab == 0)
+							gfx_TransparentSprite(sprites[natureBlocks[pos++]], x + 1, y + 1);
+						if (tab == 1)
+							gfx_TransparentSprite(sprites[buildingBlocks[pos++]], x + 1, y + 1);
+						if (tab == 2)
+							gfx_TransparentSprite(sprites[redstoning[pos++]], x + 1, y + 1);
+						if (tab == 3)
+							gfx_TransparentSprite(sprites[toolsEtc[pos++]], x + 1, y + 1);
 					}
 				}
 			}
@@ -1007,7 +1029,7 @@ void creativeInventory(void)
 				gfx_Rectangle(117 + (x * 18), 210, 18, 18);
 				if (hotbar[x] != 0)
 				{
-					gfx_TransparentSprite(sprites[hotbar[x] - 1], 118 + (x * 18), 211);
+					gfx_TransparentSprite(sprites[hotbar[x]], 118 + (x * 18), 211);
 				}
 				else
 				{
@@ -1015,47 +1037,70 @@ void creativeInventory(void)
 					gfx_FillRectangle(118 + (x * 18), 211, 16, 16);
 				}
 			}
-			if (newBlock != 0) gfx_TransparentSprite(sprites[newBlock - 1], selX + 8, selY + 8);
+			if (newBlock != 0) gfx_TransparentSprite(sprites[newBlock], selX + 8, selY + 8);
+
 			gfx_BlitBuffer();
 		}
 		kb_Scan();
-			
-			if (kb_IsDown(kb_KeyYequ) && (tab > 0)) {
-				tab--;
+
+		if (kb_IsDown(kb_KeyYequ) && (tab > 0))
+		{
+			tab--;
+			redraw = 1;
+			delay(100);
+		}
+		if (kb_IsDown(kb_KeyGraph) && (tab < 3))
+		{
+			tab++;
+			redraw = 1;
+			delay(100);
+		}
+
+		if (selY == 211)
+		{
+			if (kb_IsDown(kb_Key2nd))
+			{
+				dbg_sprintf(dbgout, "%u", newBlock);
+				oldBlock = hotbar[posB];
+				hotbar[posB] = newBlock;
+				newBlock = oldBlock;
+				oldBlock = 0;
 				redraw = 1;
 				delay(100);
 			}
-			if (kb_IsDown(kb_KeyGraph) && (tab < 3)) {
-				tab++;
+		}
+		else
+		{
+			if (kb_IsDown(kb_Key2nd) && (newBlock != 0))
+			{
+
+				newBlock = oldBlock;
+				redraw = 1;
+				delay(100);
+			}
+			if (kb_IsDown(kb_Key2nd) && (newBlock != 0) && (posB > maxSize))
+			{
+
+				newBlock = 0;
 				redraw = 1;
 				delay(100);
 			}
 
-			if (selY == 211) {
-				if (kb_IsDown(kb_Key2nd))
-				{
-					oldBlock = hotbar[posB];
-					hotbar[posB] = newBlock;
-					newBlock = oldBlock;
-					oldBlock = 0;
-					redraw = 1;
-					delay(100);
-				}
-			}else{
-				if (kb_IsDown(kb_Key2nd) && (newBlock != 0) && (selY != 211)) {
-
-					newBlock = oldBlock;
-					redraw = 1;
-					delay(100);
-				}
-				
-				if (kb_IsDown(kb_Key2nd) && (newBlock == 0) && (selY != 211)) {
-					newBlock = posB;
-					redraw = 1;
-					delay(100);
-				}
-
+			if (kb_IsDown(kb_Key2nd) && (newBlock == 0) && (posB < maxSize + 1))
+			{
+				if (tab == 0)
+					newBlock = natureBlocks[posB - 1];
+				if (tab == 1)
+					newBlock = buildingBlocks[posB - 1];
+				if (tab == 2)
+					newBlock = redstoning[posB - 1];
+				if (tab == 3)
+					newBlock = toolsEtc[posB - 1];
+				dbg_sprintf(dbgout, "%u", newBlock);
+				redraw = 1;
+				delay(100);
 			}
+		}
 
 		if (selY < 9 * 18)
 		{
@@ -1073,7 +1118,9 @@ void creativeInventory(void)
 				redraw = 1;
 				delay(80);
 			}
-		}else{
+		}
+		else
+		{
 			if (kb_IsDown(kb_KeyLeft) && (selX > 117))
 			{
 				posB--;
@@ -1089,46 +1136,44 @@ void creativeInventory(void)
 				delay(80);
 			}
 		}
-		
 
 		if (kb_IsDown(kb_KeyUp) && (selY == 211))
 		{
-				selX = selXb;
-				selY = selYb - 18;
-				posB = selPos - 15;
-				redraw = 1;
-				delay(80);
+			selX = selXb;
+			selY = selYb - 18;
+			posB = selPos - 15;
+			redraw = 1;
+			delay(80);
 		}
 
 		if ((kb_IsDown(kb_KeyUp)) && (selY > 30) && (selY < 10 * 18))
 		{
-				selY -= 18;
-				posB -= 15;
-				redraw = 1;
-				delay(80);
+			selY -= 18;
+			posB -= 15;
+			redraw = 1;
+			delay(80);
 		}
 		if (kb_IsDown(kb_KeyDown))
 		{
-			if (selY < 220)
-				{
-					selY += 18;
-					posB += 15;
-					redraw = 1;
-					delay(80);
-				}
+			if (selY < 211)
+			{
+				selY += 18;
+				posB += 15;
+				redraw = 1;
+				delay(80);
+			}
 			if (selY == 30 + 9 * 18)
-				{
-					selXb = selX;
-					selYb = selY;
-					selPos = posB;
-					selX = 117;
-					selY = 211;
-					posB = 0;
-					redraw = 1;
-					delay(80);
-				}
+			{
+				selXb = selX;
+				selYb = selY;
+				selPos = posB;
+				selX = 117;
+				selY = 211;
+				posB = 0;
+				redraw = 1;
+				delay(80);
+			}
 		}
-
 	}
 
 	redraw = 1;
