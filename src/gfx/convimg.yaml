@@ -1,0 +1,44 @@
+output: c
+
+  include-file: gfx.h
+
+  palettes:
+
+    - xlibc
+
+  converts:
+
+    - sprites
+
+
+
+palette: xlibc
+
+  images: automatic
+
+
+
+convert: sprites
+
+  palette: xlibc
+  transparent-color-index: 0
+
+  images:
+
+- Head_1.png
+- Head_2.png
+- Head_3.png
+- Head_4.png
+- Head_Pumpkin.png
+- Arm_1.png
+- Arm_2.png
+- Arm_3.png
+- Arm_4.png
+- Body_1.png
+- Body_2.png
+- Body_3.png
+- Body_4.png
+- Leg_1.png
+- Leg_2.png
+- Leg_3.png
+- Leg_4.png
