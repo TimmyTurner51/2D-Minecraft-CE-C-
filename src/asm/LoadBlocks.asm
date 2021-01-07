@@ -1,9 +1,9 @@
 
-.def _LoadBlocks
-.ref _ti_Open
-.ref _ti_GetDataPtr
-.ref _ti_Close
-.ref _sprites
+public _LoadBlocks
+extern _ti_Open
+extern _ti_GetDataPtr
+extern _ti_Close
+extern _sprites
 
 _LoadBlocks:
 	pop bc,hl
