@@ -686,6 +686,8 @@ void WorldEngine(void)
 
 	//draw the world and player sprites, as well as the player cursor... (none of which exist just yet)
 
+	LoadBlocks("MCEDEFT");
+
 	gfx_SetDrawBuffer();
 
 	while (1)
@@ -879,6 +881,21 @@ void WorldEngine(void)
 			curY += 2;
 		}
 		if ((kb_IsDown(kb_KeyDown)) && (playerY < worldHeight))
+		{
+			redraw = 1;
+			if (scrollY == -16)
+			{
+				scrollY = 0;
+				playerY++;
+				curPos += worldLength;
+				curY += 16;
+			}
+			scrollY -= 2;
+			curY -= 2;
+		}
+
+		//gravity...
+		if (WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == 0)
 		{
 			redraw = 1;
 			if (scrollY == -16)
