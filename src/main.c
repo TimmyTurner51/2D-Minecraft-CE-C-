@@ -579,7 +579,7 @@ void playMenu(void)
 void WorldEngine(void)
 {
 	ti_var_t appvar;
-	int24_t redraw, x, y, scrollX, scrollY, playerX, playerY, playerPos, curX, curY, posX, playerPosTest, height;
+	int24_t redraw, x, y, scrollX, scrollY, playerX, playerY, playerPos, curX, curY, posX, playerPosTest, height, flymode, gamemode, timer, temptimer;
 
 	gfx_SetTransparentColor(252);
 
@@ -592,6 +592,8 @@ void WorldEngine(void)
 			ti_Read(&world_offset, 3, 1, appvar);
 			ti_Read(&worldLength, 3, 1, appvar);
 			ti_Read(&worldHeight, 3, 1, appvar);
+			ti_Read(&flymode, 3, 1, appvar);
+			ti_Read(&gamemode, 3, 1, appvar);
 			ti_Read(&scrollX, 3, 1, appvar);
 			ti_Read(&scrollY, 3, 1, appvar);
 			ti_Read(&playerX, 3, 1, appvar);
@@ -663,6 +665,8 @@ void WorldEngine(void)
 		}
 
 		timeofday = 0;
+		flymode = 0;
+		timer = 0;
 
 		curX = 16 * 10;
 		curY = 16 * 4;
@@ -762,6 +766,7 @@ void WorldEngine(void)
 			gfx_TransparentSprite(Leg_1, 16 * 9 + 4, 16 * 5 + 33);
 		}
 
+
 		if (kb_IsDown(kb_KeyClear))
 			break;
 
@@ -852,6 +857,14 @@ void WorldEngine(void)
 			}
 			scrollX += 2;
 			curX += 2;
+			/*if ((WorldData[ playerX + 8 + ((playerY + 7) * worldLength) ] != 0) && (WorldData[ playerX + 8 + ((playerY + 6) * worldLength) ]) == 0)
+				{
+					scrollX += 8;
+					scrollY = -16;
+					playerY--;
+					curPos -= worldLength;
+					curY -= 16;
+				}*/
 		}
 		if ((kb_IsDown(kb_KeyRight)) && (playerX < worldLength))
 		{
@@ -866,19 +879,78 @@ void WorldEngine(void)
 			}
 			scrollX -= 2;
 			curX -= 2;
+			/*if ((WorldData[ playerX + 10 + ((playerY + 7) * worldLength) ] != 0) && (WorldData[ playerX + 10 + ((playerY + 6) * worldLength) ]) == 0)
+				{
+					scrollX -= 8;
+					scrollY = -16;
+					playerY--;
+					curPos -= worldLength;
+					curY -= 16;
+				}*/
 		}
+
+		/*gfx_SetTextFGColor(0);
+		gfx_SetTextXY(30, 20);
+		gfx_PrintInt(timer, 1);
+		gfx_SetTextXY(30, 40);
+		gfx_PrintInt(flymode, 1);
+		gfx_SetTextFGColor(254);*/
+
+		//if (timer != 0) timer++;
+		//if (timer > 8) timer = 0;
+		
+		//if (kb_IsDown(kb_KeyUp) && (timer < 4)) timer = 0;
+
+		if (kb_IsDown(kb_KeyVars))
+		{
+			gfx_SetTextFGColor(0);
+			flymode = (flymode == 0);
+			timer = 2;
+			temptimer = 0;
+			redraw = 1;
+			delay(100);
+		}
+		if (timer == 2) {
+			temptimer++;
+			if (flymode == 1)
+			gfx_PrintStringXY("Flying mode toggled to On", 4, 4);
+			if (flymode == 0)
+			gfx_PrintStringXY("Flying mode toggled to Off", 4, 4);
+			gfx_BlitBuffer();
+			if (temptimer > 100)
+			{
+				temptimer = 0;
+				timer = 0;
+				redraw = 1;
+			}
+		}
+
 		if ((kb_IsDown(kb_KeyUp)) && (playerY > 0))
 		{
 			redraw = 1;
-			if (scrollY == 0)
+			/*timer = 1;
+			if (timer > 4)
 			{
-				scrollY = -16;
-				playerY--;
-				curPos -= worldLength;
-				curY -= 16;
-			}
-			scrollY += 2;
-			curY += 2;
+				if (flymode == 0)
+				{
+					flymode = 1;
+					timer = 0;
+				}
+				if (flymode == 1)
+				{
+					flymode = 0;
+					timer = 0;
+				}
+			}*/
+				if (scrollY == 0)
+				{
+					scrollY = -16;
+					playerY--;
+					curPos -= worldLength;
+					curY -= 16;
+				}
+				scrollY += 4;
+				curY += 4;
 		}
 		if ((kb_IsDown(kb_KeyDown)) && (playerY < worldHeight))
 		{
@@ -890,12 +962,15 @@ void WorldEngine(void)
 				curPos += worldLength;
 				curY += 16;
 			}
-			scrollY -= 2;
-			curY -= 2;
+			if (flymode == 0)
+			{
+				scrollY -= 2;
+				curY -= 2;
+			}
 		}
 
 		//gravity...
-		if (WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == 0)
+		if ((flymode == 0) && !kb_IsDown(kb_KeyUp) && WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == 0)
 		{
 			redraw = 1;
 			if (scrollY == -16)
@@ -905,10 +980,11 @@ void WorldEngine(void)
 				curPos += worldLength;
 				curY += 16;
 			}
-			scrollY -= 2;
-			curY -= 2;
+			scrollY -= 4;
+			curY -= 4;
 		}
 
+		if (timeofday % 6000) redraw = 1;
 		timeofday++;
 		gfx_BlitBuffer();
 	}
@@ -926,6 +1002,8 @@ void WorldEngine(void)
 		ti_Write((void *)0xFF0000, 3, 1, appvar); //this is overwritten later
 		ti_Write(&worldLength, 3, 1, appvar);
 		ti_Write(&worldHeight, 3, 1, appvar);
+		ti_Write(&flymode, 3, 1, appvar);
+		ti_Write(&gamemode, 3, 1, appvar);
 		ti_Write(&scrollX, 3, 1, appvar);
 		ti_Write(&scrollY, 3, 1, appvar);
 		ti_Write(&playerX, 3, 1, appvar);
