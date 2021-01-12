@@ -644,16 +644,26 @@ void WorldEngine(void)
 			{ //air
 				WorldData[x + y * worldLength] = 0;
 			}
-			WorldData[x + (height * worldLength)] = 3; //grass
+			if ((randInt(0, 1) == 1) && (height > 6))  //tree
+			{
+				WorldData[x + (height - 1 * worldLength)] = OAKLOGS + 1;
+				WorldData[x + (height - 2 * worldLength)] = OAKLOGS + 1;
+				WorldData[x + (height - 3 * worldLength)] = OAKLOGS + 1;
+				WorldData[x + (height - 4 * worldLength)] = OAKLOGS + 1;
+				WorldData[x + (height - 5 * worldLength)] = OAKLEAVES + 1;
+				WorldData[x - 1 + (height - 4 * worldLength)] = OAKLEAVES + 1;
+				WorldData[x + 1 + (height - 4 * worldLength)] = OAKLEAVES + 1;
+			}
+			WorldData[x + (height * worldLength)] = GRASS + 1;
 			for (y = height + 1; y < height + 3; y++)
-			{ //dirt
-				WorldData[x + y * worldLength] = 4;
+			{
+				WorldData[x + y * worldLength] = DIRT + 1;
 			}
 			for (y = height + 3; y < worldHeight - (height + 3); y++)
-			{ //stone
-				WorldData[x + y * worldLength] = 2;
+			{
+				WorldData[x + y * worldLength] = SMOOTHSTONE + 1;
 			}
-			WorldData[x + worldHeight * worldLength] = 7; //bedrock
+			WorldData[x + worldHeight * worldLength] = BEDROCK + 1;
 		}
 
 		for (x = 91; x < 320 - 92; x++)
@@ -800,6 +810,9 @@ void WorldEngine(void)
 		{
 			delay(100);
 			WorldData[curPos] = hotbar[hotbarSel] + 1;
+			//check block updates
+			/*if ((WorldData[curPos] == GRASS + 1) && (WorldData[curPos + worldLength] != 0))
+				WorldData[curPos + worldLength] = DIRT + 1;*/
 			redraw = 1;
 		}
 		if (kb_IsDown(kb_KeyDel))
@@ -814,35 +827,25 @@ void WorldEngine(void)
 			creativeInventory();
 			redraw = 1;
 		}
-
-		if ((kb_IsDown(kb_KeyAlpha)) && (curX > 0))
+		curX = curX + (16 * (kb_IsDown(kb_KeyStat) && (curX < 320)));
+		curX = curX - (16 * (kb_IsDown(kb_KeyAlpha) && (curX > 0)));
+		curPos = curPos + (kb_IsDown(kb_KeyStat) && (curX < 320));
+		curPos = curPos - (kb_IsDown(kb_KeyAlpha) && (curX > 0));
+		if ((kb_IsDown(kb_KeyAlpha)) || (kb_IsDown(kb_KeyStat)))
 		{
 			delay(100);
-			curX -= 16;
-			curPos--;
 			redraw = 1;
 		}
-		if ((kb_IsDown(kb_KeyStat)) && (curX < 320))
+		curY = curY + (16 * (kb_IsDown(kb_KeyApps) && (curY < 240)));
+		curY = curY - (16 * (kb_IsDown(kb_KeyMode) && (curY > 0)));
+		curPos = curPos + (worldLength * (kb_IsDown(kb_KeyApps) && (curY < 240)));
+		curPos = curPos - (worldLength * (kb_IsDown(kb_KeyMode) && (curY > 0)));
+		if ((kb_IsDown(kb_KeyApps)) || (kb_IsDown(kb_KeyMode)))
 		{
 			delay(100);
-			curX += 16;
-			curPos++;
 			redraw = 1;
 		}
-		if ((kb_IsDown(kb_KeyMode)) && (curY > 0))
-		{
-			delay(100);
-			curY -= 16;
-			curPos -= worldLength;
-			redraw = 1;
-		}
-		if ((kb_IsDown(kb_KeyApps)) && (curY < 240))
-		{
-			delay(100);
-			curY += 16;
-			curPos += worldLength;
-			redraw = 1;
-		}
+		
 
 		if ((kb_IsDown(kb_KeyLeft)) && (playerX > 0))
 		{
@@ -857,16 +860,15 @@ void WorldEngine(void)
 			}
 			scrollX += 2;
 			curX += 2;
-			/*if ((WorldData[ playerX + 8 + ((playerY + 7) * worldLength) ] != 0) && (WorldData[ playerX + 8 + ((playerY + 6) * worldLength) ]) == 0)
+			if ((scrollX == 0) && (WorldData[ playerX + 8 + ((playerY + 7) * worldLength) ] != 0) && (WorldData[ playerX + 8 + ((playerY + 6) * worldLength) ]) == 0)
 				{
-					scrollX += 8;
-					scrollY = -16;
+					scrollY = 0;
 					playerY--;
 					curPos -= worldLength;
-					curY -= 16;
-				}*/
+					curY += 4;
+				}
 		}
-		if ((kb_IsDown(kb_KeyRight)) && (playerX < worldLength))
+		if ((kb_IsDown(kb_KeyRight)) && (playerX < worldLength - 10))
 		{
 			redraw = 1;
 			if (scrollX == -16)
@@ -879,14 +881,13 @@ void WorldEngine(void)
 			}
 			scrollX -= 2;
 			curX -= 2;
-			/*if ((WorldData[ playerX + 10 + ((playerY + 7) * worldLength) ] != 0) && (WorldData[ playerX + 10 + ((playerY + 6) * worldLength) ]) == 0)
+			if ((scrollX == -16) && (WorldData[ playerX + 10 + ((playerY + 7) * worldLength) ] != 0) && (WorldData[ playerX + 10 + ((playerY + 6) * worldLength) ]) == 0)
 				{
-					scrollX -= 8;
-					scrollY = -16;
+					scrollY = 0;
 					playerY--;
 					curPos -= worldLength;
-					curY -= 16;
-				}*/
+					curY += 4;
+				}
 		}
 
 		/*gfx_SetTextFGColor(0);
@@ -925,7 +926,7 @@ void WorldEngine(void)
 			}
 		}
 
-		if ((kb_IsDown(kb_KeyUp)) && (playerY > 0))
+		if ((kb_IsDown(kb_KeyUp)) && (playerY > 0) && (WorldData[ playerX + 9 + ((playerY + 6) * worldLength) ] == 0))
 		{
 			redraw = 1;
 			/*timer = 1;
@@ -1028,6 +1029,7 @@ void WorldEngine(void)
 
 	delay(100);
 }
+
 
 void creativeInventory(void)
 {
