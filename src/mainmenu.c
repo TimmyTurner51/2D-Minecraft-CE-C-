@@ -1,3 +1,26 @@
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <tice.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <debug.h>
+
+#include <graphx.h>
+#include <keypadc.h>
+#include <fileioc.h>
+
+#include <srldrvce.h>
+#include <usbdrvce.h>
+
+#include <debug.h>
+
+#include "mainmenu.h"
+#include "defines.h"
+
 void MainMenu(void)
 {
 	int24_t CursorY, x, i, option, test, scroll, scrollY, redraw, timer, val, tab, worldLength, worldHeight;

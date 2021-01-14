@@ -16,7 +16,10 @@
 #include <srldrvce.h>
 #include <usbdrvce.h>
 
-#include <debug.h>
+#include "achievements.h"
+#include "drawDirtBackground.h"
+#include "defines.h"
+
 
 void Achievements(void)
 {

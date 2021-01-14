@@ -1,10 +1,27 @@
 
-int natureBlocks[13] = {GRASS, DIRT, SMOOTHSTONE, COBBLESTONE, SAND, GRAVEL, OAKLOGS, OAKLEAVES, BEDROCK, COALORE, IRONORE, GOLDORE, LAPIZORE};
-int buildingBlocks[3] = {OAKPLANK, GLASS, SPONGE};
-int redstoning[3] = {REDSTONEDUSTOFF, NOTEBLOCK, REGULARPISTONRIGHTOFF};
-int toolsEtc[1] = { BEDBACK };
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <tice.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <debug.h>
 
-int typesvalues[4] = {13, 3, 3, 1};
+#include <graphx.h>
+#include <keypadc.h>
+#include <fileioc.h>
+
+#include <srldrvce.h>
+#include <usbdrvce.h>
+
+#include <debug.h>
+
+#include "creativeInventory.h"
+#include "defines.h"
+#include "gfx/gfx.h"
+
 
 void creativeInventory(void)
 {
