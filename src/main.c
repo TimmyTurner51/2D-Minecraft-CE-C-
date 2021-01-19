@@ -79,7 +79,7 @@ gfx_sprite_t *sprites[254];
 gfx_sprite_t dummy_sprite = {1, 1, 0};
 
 //define the world data list
-char WorldData[200 * 200] = {0};
+char WorldData[256 * 256] = {0};
 char *world_file = "MCCESAVE";
 //hopefully a static 'y' will fix some menu bugs...
 int16_t x, y, pos;
@@ -426,24 +426,24 @@ void playMenu(void)
 
 							if (worldSize == 0)
 							{
-								worldLength = 100;
-								worldHeight = 100;
+								worldLength = 128;
+								worldHeight = 128;
 							}
 							if (worldSize == 1)
 							{
-								worldLength = 200;
-								worldHeight = 200;
+								worldLength = 256;
+								worldHeight = 256;
 							}
 							if (worldSize == 2)
 							{
-								worldLength = 500;
-								worldHeight = 200;
+								worldLength = 512;
+								worldHeight = 256;
 							}
 							if (worldSize == 3)
 							{
 								//infinite...well, not really... :(
-								worldLength = 10000;
-								worldHeight = 300;
+								worldLength = 1088;
+								worldHeight = 256;
 							}
 
 							//supposed to take the first 8 letters of the worldName string and copy to world_file
@@ -576,7 +576,7 @@ void Settings(void)
 void WorldEngine(void)
 {
 	ti_var_t appvar;
-	int24_t redraw, x, y, scrollX, scrollY, playerX, playerY, playerPos, curX, curY, posX;
+	int24_t redraw, x, y, scrollX, scrollY, playerX, playerY, playerPos, curX, curY, posX, biome;
 	int24_t chunkX, multiplier, seed, playerPosTest, height, flymode, gamemode, timer, temptimer;
 
 	gfx_SetTransparentColor(252);
@@ -626,12 +626,14 @@ void WorldEngine(void)
 
 		//this is an updated generator, and it to be used with the new textures...we now have bedrock too!
 		//thank u LogicalJoe!!
-		height = 20;
+		height = randInt(30, 80);
 
 		//from Zeroko: srand(worldSeed*multiplier+chunkX)
 
-		seed = 7920013911;
+		//seed = 7920013911;
+		seed = 4018820011;
 		chunkX = 0;
+		
 		multiplier = seed / 2;
 		for (x = 0; x < worldLength; x++)
 		{
@@ -655,13 +657,23 @@ void WorldEngine(void)
 				WorldData[x + ((height - 3) * worldLength)] = OAKLOGS + 1;
 				WorldData[x + ((height - 4) * worldLength)] = OAKLOGS + 1;
 				WorldData[x + ((height - 5) * worldLength)] = OAKLEAVES + 1;
-				WorldData[x + ((height - 4) * worldLength) - 1] = OAKLEAVES + 1;
-				WorldData[x + ((height - 4) * worldLength) + 2] = OAKLEAVES + 1;
+				WorldData[x + (height - 4 * worldLength) - 1] = OAKLEAVES + 1;
+				WorldData[x + (height - 4 * worldLength) + 2] = OAKLEAVES + 1;
 			}
-			WorldData[x + (height * worldLength)] = GRASS + 1;
-			for (y = height + 1; y < height + 3; y++)
+			if (randInt(0, 6) == 2)
 			{
-				WorldData[x + y * worldLength] = DIRT + 1;
+				WorldData[x + (height * worldLength)] = WATER + 1;
+				for (y = height + 1; y < height + randInt(10, 30); y++)
+				{
+					WorldData[x + (y * worldLength)] = WATER + 1;
+				}
+				height = y - randInt(10, 30);
+			}else{
+				WorldData[x + (height * worldLength)] = GRASS + 1;
+				for (y = height + 1; y < height + 3; y++)
+				{
+					WorldData[x + y * worldLength] = DIRT + 1;
+				}
 			}
 			for (y = height + 3; y < worldHeight - (height + 3); y++)
 			{
@@ -669,7 +681,6 @@ void WorldEngine(void)
 			}
 			WorldData[x + worldHeight * worldLength] = BEDROCK + 1;
 		}
-
 		for (x = 91; x < 320 - 92; x++)
 		{
 			//green progress bar... for looks at this point
@@ -722,30 +733,10 @@ void WorldEngine(void)
 			{
 				for (x = scrollX; x < 321 + scrollX; x += 16)
 				{
-					if (playerY > 2)
-					{
-						/* now has basic shadowing */
-						if ((WorldData[playerPos] != 0) && (WorldData[playerPos - worldLength] == 0))
-						{
-							gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
-						}
-						else
-						{
-							if ((WorldData[playerPos] != 0) && (WorldData[playerPos + worldLength] != 0) && (WorldData[playerPos + 1] != 0) && (WorldData[playerPos - 1] != 0))
-								gfx_FillRectangle(x, y, 16, 16);
-							if ((WorldData[playerPos] != 0) && (WorldData[playerPos + worldLength] == 0))
-								gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
-							if ((WorldData[playerPos - 1] != 0) && (WorldData[playerPos] == 0))
-								gfx_TransparentSprite(sprites[WorldData[playerPos - 1] - 1], x - 16, y);
-							if ((WorldData[playerPos + 1] != 0) && (WorldData[playerPos] == 0))
-								gfx_TransparentSprite(sprites[WorldData[playerPos + 1] - 1], x + 16, y);
-						}
-					}
-					else
-					{
-						if (WorldData[playerPos] != 0)
-							gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
-					}
+					if (WorldData[playerPos] != 0)
+						gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
+					/* basic shadowing (v1.2) */
+
 
 					playerPos++;
 				}
@@ -809,7 +800,6 @@ void WorldEngine(void)
 			hotbarSel = 4;
 			redraw = 1;
 		}
-
 		if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0))
 		{
 			delay(100);
@@ -933,20 +923,19 @@ void WorldEngine(void)
 		if ((kb_IsDown(kb_KeyUp)) && (playerY > 0) && (WorldData[ playerX + 9 + ((playerY + 6) * worldLength) ] == 0))
 		{
 			redraw = 1;
-			/*timer = 1;
-			if (timer > 4)
-			{
-				if (flymode == 0)
+				if (scrollY > -1)
 				{
-					flymode = 1;
-					timer = 0;
+					scrollY = -16;
+					playerY--;
+					curPos -= worldLength;
+					curY -= 16;
 				}
-				if (flymode == 1)
-				{
-					flymode = 0;
-					timer = 0;
-				}
-			}*/
+				scrollY += 4;
+				curY += 4;
+		}
+		if ((kb_IsDown(kb_KeyUp)) && (WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == WATER + 1))
+		{
+			redraw = 1;
 				if (scrollY > -1)
 				{
 					scrollY = -16;
@@ -974,8 +963,8 @@ void WorldEngine(void)
 			}
 		}
 
-		//gravity...
-		if ((flymode == 0) && !kb_IsDown(kb_KeyUp) && WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == 0)
+		//gravity, water, and lava (swimming? Don't swim in Lava!)...
+		if ((flymode == 0) && !(kb_IsDown(kb_KeyUp)) && (WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == 0))
 		{
 			redraw = 1;
 			if (scrollY < -15)
@@ -988,6 +977,23 @@ void WorldEngine(void)
 			scrollY -= 4;
 			curY -= 4;
 		}
+		if ((WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == WATER + 1) && (!kb_IsDown(kb_KeyUp)))
+		{
+			redraw = 1;
+			if (scrollY < -15)
+			{
+				scrollY = 0;
+				playerY++;
+				curPos += worldLength;
+				curY += 16;
+			}
+			scrollY -= 4;
+			curY -= 4;
+		}
+		if (scrollX > 0) scrollX = -1;
+		if (scrollX < -16) scrollX = -15;
+		if (scrollY > 0) scrollY = -1;
+		if (scrollY < -16) scrollY = -15;
 
 		if (timeofday % 6000) redraw = 1;
 		timeofday++;
