@@ -100,6 +100,7 @@ int24_t hotbarCur;
 int24_t blockSel;
 bool loaded_world = 0;
 gfx_TempSprite(logo, 16, 16);
+gfx_TempSprite(tempSpr, 12, 12);
 int natureBlocks[13] = {GRASS, DIRT, SMOOTHSTONE, COBBLESTONE, SAND, GRAVEL, OAKLOGS, OAKLEAVES, BEDROCK, COALORE, IRONORE, GOLDORE, LAPIZORE};
 int buildingBlocks[3] = {OAKPLANK, GLASS, SPONGE};
 int redstoning[3] = {REDSTONEDUSTOFF, NOTEBLOCK, REGULARPISTONRIGHTOFF};
@@ -576,9 +577,9 @@ void Settings(void)
 void WorldEngine(void)
 {
 	ti_var_t appvar;
-	int24_t redraw, x, y, scrollX, scrollY, playerX, playerY, playerPos, curX, curY, posX, biome;
+	int24_t redraw, x, y, scrollX, scrollY, playerX, playerY, playerPos, curX, curY, posX, biome, jump;
 	int24_t chunkX, multiplier, seed, playerPosTest, height, flymode, gamemode, timer, temptimer;
-
+	int8_t angle;
 	gfx_SetTransparentColor(252);
 
 	if (appvar = ti_Open(world_file, "r"))
@@ -635,6 +636,13 @@ void WorldEngine(void)
 		chunkX = 0;
 		
 		multiplier = seed / 2;
+		// handle generation of air first, so everything can generate properly. 
+		// This looks bad, but the generator is pretty fast, and that's all I'm worried about.
+		for (x = 0; x < worldLength * worldHeight; x++)
+		{
+			WorldData[x] = 0;
+		}
+		//rest of generation
 		for (x = 0; x < worldLength; x++)
 		{
 			if (x % 16) chunkX++;
@@ -646,10 +654,6 @@ void WorldEngine(void)
 					height += 2;
 			}
 
-			for (y = 0; y < height; y++)
-			{ //air
-				WorldData[x + y * worldLength] = 0;
-			}
 			if (randInt(1, 10) == 1)  //tree
 			{
 				WorldData[x + ((height - 1) * worldLength)] = OAKLOGS + 1;
@@ -657,8 +661,8 @@ void WorldEngine(void)
 				WorldData[x + ((height - 3) * worldLength)] = OAKLOGS + 1;
 				WorldData[x + ((height - 4) * worldLength)] = OAKLOGS + 1;
 				WorldData[x + ((height - 5) * worldLength)] = OAKLEAVES + 1;
-				WorldData[x + (height - 4 * worldLength) - 1] = OAKLEAVES + 1;
-				WorldData[x + (height - 4 * worldLength) + 2] = OAKLEAVES + 1;
+				WorldData[x + ((height - 4) * worldLength) - 1] = OAKLEAVES + 1;
+				WorldData[x + ((height - 4) * worldLength) + 1] = OAKLEAVES + 1;
 			}
 			if (randInt(0, 6) == 2)
 			{
@@ -713,6 +717,8 @@ void WorldEngine(void)
 		blockSel = 1;
 	}
 
+	jump = 0;
+	angle = 0;
 	//draw the world and player sprites, as well as the player cursor... (none of which exist just yet)
 
 	LoadBlocks("MCEDEFT");
@@ -733,11 +739,19 @@ void WorldEngine(void)
 			{
 				for (x = scrollX; x < 321 + scrollX; x += 16)
 				{
-					if (WorldData[playerPos] != 0)
-						gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
+					
 					/* basic shadowing (v1.2) */
-
-
+					if (WorldData[playerPos] != 0)
+					{
+						// draw the shadowing box (not for water, lava, etc.)
+						if ((WorldData[playerPos] != WATER + 1) && (WorldData[playerPos] != LAVA + 1))
+						gfx_FillRectangle(x, y, 16, 16);
+						// check if air is on the left face, right face, top face, and bottom face
+						// (in that order), and draw the block if so
+						if ((WorldData[playerPos] == WATER + 1) || (WorldData[playerPos] == LAVA + 1) || (WorldData[playerPos - 1] == 0) || (WorldData[playerPos + 1] == 0) || (WorldData[playerPos - worldLength] == 0) || (WorldData[playerPos + worldLength] == 0))
+						gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
+					}
+					
 					playerPos++;
 				}
 				playerPos += worldLength - 21;
@@ -766,12 +780,21 @@ void WorldEngine(void)
 				}
 			}
 
-			gfx_TransparentSprite(Head_1, 16 * 9 + 2, 16 * 5 + 14);
-			gfx_TransparentSprite(Body_1, 16 * 9 + 4, 16 * 5 + 22);
-			gfx_TransparentSprite(Leg_1, 16 * 9 + 4, 16 * 5 + 33);
+			//gfx_TransparentSprite(Head_1, 16 * 9 + 2, 16 * 5 + 14);
+			//gfx_TransparentSprite(Body_1, 16 * 9 + 4, 16 * 5 + 22);
+			//gfx_TransparentSprite(Leg_1, 16 * 9 + 4, 16 * 5 + 33);
+			
+			gfx_RotatedScaledTransparentSprite_NoClip(Head_1, 16 * 9 + 2, 16 * 5 + 14, 0, 64);
+			gfx_RotatedScaledTransparentSprite_NoClip(Body_1, 16 * 9 + 4, 16 * 5 + 22, 0, 64);
+			//gfx_RotatedScaledTransparentSprite_NoClip(Arm_1, 16 * 9 + 4, 16 * 5 + 22, 256 - angle, 64);
+			gfx_RotatedScaledTransparentSprite_NoClip(tempSpr, 16 * 9 + 4, 16 * 5 + 33, angle, 64);
 		}
-
-
+		//body animations
+		if (kb_IsDown(kb_KeyLeft)) angle--;
+		if (kb_IsDown(kb_KeyRight)) angle++;
+		if (angle > 256) angle = 0;
+		if (angle < 1) angle = 0;
+		//rest of gameplay code
 		if (kb_IsDown(kb_KeyClear))
 			break;
 
@@ -920,7 +943,7 @@ void WorldEngine(void)
 			}
 		}
 
-		if ((kb_IsDown(kb_KeyUp)) && (playerY > 0) && (WorldData[ playerX + 9 + ((playerY + 6) * worldLength) ] == 0))
+		if ((kb_IsDown(kb_KeyUp)) && (jump == 0) && (playerY > 0) && (WorldData[ playerX + 9 + ((playerY + 6) * worldLength) ] == 0))
 		{
 			redraw = 1;
 				if (scrollY > -1)
@@ -929,6 +952,7 @@ void WorldEngine(void)
 					playerY--;
 					curPos -= worldLength;
 					curY -= 16;
+					jump = 1;
 				}
 				scrollY += 4;
 				curY += 4;
@@ -973,6 +997,7 @@ void WorldEngine(void)
 				playerY++;
 				curPos += worldLength;
 				curY += 16;
+				jump = 0;
 			}
 			scrollY -= 4;
 			curY -= 4;
@@ -986,6 +1011,7 @@ void WorldEngine(void)
 				playerY++;
 				curPos += worldLength;
 				curY += 16;
+				jump = 0;
 			}
 			scrollY -= 4;
 			curY -= 4;
