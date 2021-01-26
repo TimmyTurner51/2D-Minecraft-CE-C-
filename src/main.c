@@ -579,6 +579,7 @@ void WorldEngine(void)
 	int24_t redraw, x, y, scrollX, scrollY, playerX, playerY, playerPos, curX, curY, posX, biome, jump;
 	int24_t chunkX, multiplier, seed, playerPosTest, height, flymode, gamemode, timer, temptimer;
 	int8_t angle, i;
+	uint8_t xb, yb;
 	gfx_sprite_t *tempSpr = gfx_MallocSprite(14, 14);
 	gfx_SetTransparentColor(252);
 
@@ -699,17 +700,26 @@ void WorldEngine(void)
 				}
 				
 				//ore generation
-				if ((randInt(1, 40) == 10) && (WorldData[x + y * worldLength] != 0) && (height < 30))
+				if ((randInt(1, 40) == 10) && (WorldData[x + y * worldLength] != 0) && (height > 30))
 					WorldData[x + y * worldLength] = COALORE;
-				if ((randInt(1, 40) == 10) && (WorldData[x + y * worldLength] != 0) && (height < 130))
-					WorldData[x + y * worldLength] = GOLDORE;
-				if ((randInt(1, 40) == 10) && (WorldData[x + y * worldLength] != 0) && (height < 130))
+				if ((randInt(1, 40) == 10) && (WorldData[x + y * worldLength] != 0) && (height > 130))
 					WorldData[x + y * worldLength] = IRONORE;
-				//if ((randInt(1, 40) == 10) && (WorldData[x + y * worldLength] != 0) && (height < 130))
-				//	WorldData[x + y * worldLength] = COALORE;
+				if ((randInt(1, 40) == 10) && (WorldData[x + y * worldLength] != 0) && (height > 160))
+					WorldData[x + y * worldLength] = GOLDORE;
+				//if ((randInt(1, 40) == 10) && (WorldData[x + y * worldLength] != 0) && (height > 160))
+				//	WorldData[x + y * worldLength] = DIAMONDORE;
 				
 				//stronghold
-				//hmm, nothing here yet... :(
+				if ((randInt(1, 900) == 20) && (WorldData[x + y * worldLength] != 0) && (x > 10))
+				{
+					for (xb = x - 8; xb < x; xb++) {
+						for (yb = y; yb < y + 8; yb++) {
+							WorldData[xb + yb * worldLength] = 0;
+							if ((xb == x - 8) || (xb == x - 1) || (yb == y) || (yb == y + 7))
+							WorldData[xb + yb * worldLength] = COBBLESTONE + 1;
+						}
+					}
+				}
 
 			}
 			WorldData[x + worldHeight * worldLength] = BEDROCK + 1;
@@ -760,15 +770,16 @@ void WorldEngine(void)
 
 		if (redraw == 1)
 		{
+			dbg_printf("Hotbar slot 1 ID is %u\n", hotbar[0]);
 			redraw = 0;
 			gfx_FillScreen(dayColors[timeofday / 6000]);
 			gfx_SetColor(32);
-			playerPos = (playerX + (playerY * worldLength));
+			playerPos = (playerX + playerY * worldLength);
+			dbg_printf("Cursor Pos block ID is %u\n", WorldData[curPos]);
 			for (y = scrollY; y < 241 + scrollY; y += 16)
 			{
 				for (x = scrollX; x < 321 + scrollX; x += 16)
 				{
-					
 					/* basic shadowing (v1.2) */
 					if (WorldData[playerPos] != 0)
 					{
@@ -785,6 +796,8 @@ void WorldEngine(void)
 				}
 				playerPos += worldLength - 21;
 			}
+			playerPos = (playerX + playerY * worldLength);
+			
 			gfx_Rectangle(curX, curY, 16, 16);
 			//hotbar
 			for (x = 0; x < 5; x++)
@@ -817,7 +830,24 @@ void WorldEngine(void)
 			//gfx_RotatedScaledTransparentSprite_NoClip(Arm_1, 16 * 9 + 4, 16 * 5 + 22, 256 - angle, 64);
 			//gfx_RotatedScaledTransparentSprite_NoClip(tempSpr, 16 * 9 + 4, 16 * 5 + 33, angle, 64);
 		}
-
+		
+		//behaviors
+		for (y = 0; y < 15; y++)
+		{
+			for (x = 0; x < 20; x++)
+			{
+				
+				if ((WorldData[playerPos] == SAND + 1) && (WorldData[playerPos + worldLength] < 2))
+				{
+					WorldData[playerPos] == 1;
+					WorldData[playerPos + worldLength] == SAND + 1;
+					redraw = 1;
+				}
+				playerPos++;
+			}
+			playerPos += worldLength - 21;
+		}
+		
 		if (kb_IsDown(kb_KeyClear))
 			break;
 
@@ -846,7 +876,7 @@ void WorldEngine(void)
 			hotbarSel = 4;
 			redraw = 1;
 		}
-		if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0))
+		if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0) && (hotbar[hotbarSel] != 0))
 		{
 			delay(100);
 			WorldData[curPos] = hotbar[hotbarSel] + 1;
@@ -956,16 +986,11 @@ void WorldEngine(void)
 		if ((kb_IsDown(kb_KeyUp)) && (jump == 0) && (playerY > 0) && (WorldData[ playerX + 9 + ((playerY + 6) * worldLength) ] == 0))
 		{
 			redraw = 1;
-				if (scrollY > 0)
-				{
-					scrollY = -16;
-					playerY--;
-					curPos -= worldLength;
-					curY -= 16 + 8;
-				}
+			scrollY = 0;
+			playerY--;
+			curPos -= worldLength;
+			curY += 4;
 			jump = 1;
-			scrollY += 8;
-			curY += 8;
 		}
 		//swimming up in water...
 		if ((kb_IsDown(kb_KeyUp)) && (WorldData[ playerX + 9 + ((playerY + 7) * worldLength) ] == WATER + 1))
@@ -1016,6 +1041,8 @@ void WorldEngine(void)
 		if ((WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == WATER + 1) && (!kb_IsDown(kb_KeyUp)))
 		{
 			redraw = 1;
+			scrollY -= 4;
+			curY -= 4;
 			if (scrollY < -16)
 			{
 				scrollY = 0;
@@ -1024,8 +1051,6 @@ void WorldEngine(void)
 				curY += 16 + 4;
 				jump = 0;
 			}
-			scrollY -= 4;
-			curY -= 4;
 		}
 
 		if (timeofday % 6000) redraw = 1;
