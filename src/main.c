@@ -103,9 +103,9 @@ gfx_TempSprite(logo, 16, 16);
 int natureBlocks[13] = {GRASS, DIRT, SMOOTHSTONE, COBBLESTONE, SAND, GRAVEL, OAKLOGS, OAKLEAVES, BEDROCK, COALORE, IRONORE, GOLDORE, LAPIZORE};
 int buildingBlocks[3] = {OAKPLANK, GLASS, SPONGE};
 int redstoning[3] = {REDSTONEDUSTOFF, NOTEBLOCK, REGULARPISTONRIGHTOFF};
-int toolsEtc[1] = { BEDBACK };
+int toolsEtc[3] = { BEDBACK, WATER, LAVA };
 
-int typesvalues[4] = {13, 3, 3, 1};
+int typesvalues[4] = {13, 3, 3, 3};
 
 uint8_t foundCount; // used to stop the code from finding too many appvars
 uint8_t dayColors[5] = {191, 158, 125, 51, 9};
@@ -770,17 +770,17 @@ void WorldEngine(void)
 
 		if (redraw == 1)
 		{
-			dbg_printf("Hotbar slot 1 ID is %u\n", hotbar[0]);
 			redraw = 0;
 			gfx_FillScreen(dayColors[timeofday / 6000]);
 			gfx_SetColor(32);
 			playerPos = (playerX + playerY * worldLength);
-			dbg_printf("Cursor Pos block ID is %u\n", WorldData[curPos]);
+			xb = playerPos;
+			//behaviors w/ block drawing
 			for (y = scrollY; y < 241 + scrollY; y += 16)
 			{
 				for (x = scrollX; x < 321 + scrollX; x += 16)
 				{
-					/* basic shadowing (v1.2) */
+					// basic shadowing (v1.2)
 					if (WorldData[playerPos] != 0)
 					{
 						// draw the shadowing box (not for water, lava, etc.)
@@ -790,8 +790,23 @@ void WorldEngine(void)
 						// (in that order), and draw the block if so
 						if ((WorldData[playerPos] == WATER + 1) || (WorldData[playerPos] == LAVA + 1) || (WorldData[playerPos - 1] == 0) || (WorldData[playerPos + 1] == 0) || (WorldData[playerPos - worldLength] == 0) || (WorldData[playerPos + worldLength] == 0))
 						gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
+						//behaviors
+						//sand falls
+						if ((WorldData[playerPos] == SAND + 1) && (WorldData[playerPos + worldLength] == 0))
+						{
+							WorldData[playerPos] = 0;
+							WorldData[playerPos + worldLength] = SAND + 1;
+						}
+						//water flows
+						if ((WorldData[playerPos] == WATER + 1) && (WorldData[playerPos + worldLength] == 0))
+							WorldData[playerPos + worldLength] = WATER + 1;
+						//lava flows
+						if ((WorldData[playerPos] == LAVA + 1) && (WorldData[playerPos + worldLength] == 0))
+							WorldData[playerPos + worldLength] = LAVA + 1;
+						//grass turns to dirt when blocs are on top of grass
+						if ((WorldData[playerPos] != 0) && (WorldData[playerPos + worldLength] == GRASS + 1))
+							WorldData[playerPos + worldLength] = DIRT + 1;
 					}
-					
 					playerPos++;
 				}
 				playerPos += worldLength - 21;
@@ -831,23 +846,6 @@ void WorldEngine(void)
 			//gfx_RotatedScaledTransparentSprite_NoClip(tempSpr, 16 * 9 + 4, 16 * 5 + 33, angle, 64);
 		}
 		
-		//behaviors
-		for (y = 0; y < 15; y++)
-		{
-			for (x = 0; x < 20; x++)
-			{
-				
-				if ((WorldData[playerPos] == SAND + 1) && (WorldData[playerPos + worldLength] < 2))
-				{
-					WorldData[playerPos] == 1;
-					WorldData[playerPos + worldLength] == SAND + 1;
-					redraw = 1;
-				}
-				playerPos++;
-			}
-			playerPos += worldLength - 21;
-		}
-		
 		if (kb_IsDown(kb_KeyClear))
 			break;
 
@@ -880,9 +878,6 @@ void WorldEngine(void)
 		{
 			delay(100);
 			WorldData[curPos] = hotbar[hotbarSel] + 1;
-			//check block updates
-			/*if ((WorldData[curPos] == GRASS + 1) && (WorldData[curPos + worldLength] != 0))
-				WorldData[curPos + worldLength] = DIRT + 1;*/
 			redraw = 1;
 		}
 		if (kb_IsDown(kb_KeyDel) && (WorldData[curPos] != 0))
