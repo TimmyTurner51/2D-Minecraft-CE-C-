@@ -79,7 +79,10 @@ gfx_sprite_t *sprites[254];
 gfx_sprite_t dummy_sprite = {1, 1, 0};
 
 //define the world data list
-char WorldData[256 * 256] = {0};
+char WorldData[256 * 256] = { 0 };
+// 0 = redstone off/null; 1 = redstone on; 2 = Water where sand/gravel fall; 3 = Lava where sand/gravel falls;
+// anything > 3 = timer for the corresponding block in the same pos in WorldData array; 
+char BlockData[20 * 16] = { 0 };
 char *world_file = "MCCESAVE";
 //hopefully a static 'y' will fix some menu bugs...
 int16_t x, y, pos;
@@ -579,13 +582,40 @@ void WorldEngine(void)
 	ti_var_t appvar;
 	int24_t redraw, x, y, scrollX, scrollY, playerX, playerY, playerPos, curX, curY, posX, jump;
 	int24_t chunkX, multiplier, seed, playerPosTest, height, flymode, timer, temptimer;
-	int8_t angle, i, health, hunger, exp;
+	int8_t angle, i, health, hunger, exp, bgColor;
 	//{grass, sand, water, lava}
-	int ticks[3] = { 0, 0, 0, 0 };
+	int ticks[4] = { 0, 0, 0, 0 };
 	uint8_t xb, yb;
 	gfx_sprite_t *tempSpr = gfx_MallocSprite(14, 14);
 	gfx_SetTransparentColor(252);
 
+		timeofday = 0;
+		flymode = 0;
+		timer = 0;
+
+		posX = 0;
+		hotbar[0] = 0;
+		hotbar[1] = 0;
+		hotbar[2] = 0;
+		hotbar[3] = 0;
+		hotbar[4] = 0;
+		// the * 2 is for half hearts
+		health = 9 * 2;
+		hunger = 9 * 2;
+		exp = 0;
+		//0 is the first pos in the hotbar array (it's max size is 5 btw)
+		hotbarSel = 0;
+		ticks[0] = 1;
+		curX = 16 * 10;
+		curY = 16 * 4;
+		playerX = 1;
+		playerY = 0;
+		curPos = (curX / 16) + ((curY / 16) * worldLength) + playerX;
+		scrollX = 0;
+		scrollY = 0;
+		playerPos = 0;
+		//set selected block to grass block...
+		//blockSel = 1;
 	if (appvar = ti_Open(world_file, "r"))
 	{
 		if (!memcmp(ti_GetDataPtr(appvar), "MCCESV", 6))
@@ -639,7 +669,8 @@ void WorldEngine(void)
 		//from Zeroko: srand(worldSeed*multiplier+chunkX)
 
 		//seed = 7920013911;
-		seed = 4018820011;
+		//seed = 4018820011;
+		seed = 2985052197125;
 		chunkX = 0;
 		
 		multiplier = seed / 2;
@@ -667,7 +698,6 @@ void WorldEngine(void)
 				if (height < 1)
 					height += 2;
 			}
-
 			if (randInt(1, 10) == 1)  //tree
 			{
 				WorldData[x + ((height - 1) * worldLength)] = OAKLOGS + 1;
@@ -738,35 +768,16 @@ void WorldEngine(void)
 			gfx_BlitBuffer();
 		}
 
-		timeofday = 0;
-		flymode = 0;
-		timer = 0;
-
-		curX = 16 * 10;
-		curY = 16 * 4;
-		playerX = 1;
-		playerY = 0;
-		curPos = (curX / 16) + ((curY / 16) * worldLength) + playerX;
-		scrollX = 0;
-		scrollY = 0;
-		posX = 0;
-		hotbar[0] = 0;
-		hotbar[1] = 0;
-		hotbar[2] = 0;
-		hotbar[3] = 0;
-		hotbar[4] = 0;
-		// the * 2 is for half hearts
-		health = 9 * 2;
-		//0 is the first pos in the hotbar array (it's max size is 5 btw)
-		hotbarSel = 0;
-		ticks[0] = 1;
-		//set selected block to grass block...
-		//blockSel = 1;
 	}
 
 	jump = 0;
 	angle = 0;
-	//draw the world and player sprites, as well as the player cursor... (none of which exist just yet)
+	
+	while (WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == 0)
+	{
+		playerY++;
+		curPos += worldLength;
+	}
 
 	LoadBlocks("MCEDEFT");
 	gfx_SetDrawBuffer();
@@ -775,21 +786,43 @@ void WorldEngine(void)
 	{
 		kb_Scan();
 
+		bgColor = dayColors[timeofday / 6000];
+		
+		if ((kb_IsDown(kb_Key7)) && (health > 0)) 
+		{
+			health--;
+			bgColor = 224;
+			gfx_BlitBuffer();
+			delay(120);
+			ticks[0] = 1;
+		}
+		if ((hunger == 18) && (health != 18) && (timer == 0)) 
+		{
+			timer = 1;
+			temptimer = 1;
+			health++;
+		}
+
+		if (temptimer != 0) temptimer++;
+		if ((timer == 1) && (temptimer == 80))
+		{
+			timer = 0;
+			health++;
+		}
 		if ((ticks[0] != 0) || (ticks[1] != 0) || (ticks[2] != 0) || (ticks[3] != 0))
 		{
 			if (ticks[0] != 0) ticks[0]--;
-			if (ticks[1] != 0) ticks[1]--;
 			if (ticks[2] != 0) ticks[2]--;
 			if (ticks[3] != 0) ticks[3]--;
-			gfx_FillScreen(dayColors[timeofday / 6000]);
+			gfx_FillScreen(bgColor);
 			gfx_SetColor(32);
-			
 			playerPos = (playerX + playerY * worldLength);
-			//behaviors w/ block drawing
+			//behaviors w/ block drawing, and fixing cursor bugs by forcing it to "snap to the grid"
 			for (y = scrollY; y < 241 + scrollY; y += 16)
 			{
 				for (x = scrollX; x < 321 + scrollX; x += 16)
 				{
+					if (BlockData[playerPos] != 0) BlockData[playerPos]--;
 					// basic shadowing (v1.2)
 					if (WorldData[playerPos] != 0)
 					{
@@ -803,15 +836,16 @@ void WorldEngine(void)
 						
 						// behaviors
 						// sand falls
-						if ((WorldData[playerPos] == SAND + 1) && ((WorldData[playerPos + worldLength] == 0) || (WorldData[playerPos + worldLength] == WATER + 1) || (WorldData[playerPos + worldLength] == LAVA + 1)) && (ticks[1] == 0))
+						if ((WorldData[playerPos] == SAND + 1) && ((WorldData[playerPos + worldLength] == 0) || (WorldData[playerPos + worldLength] == WATER + 1) || (WorldData[playerPos + worldLength] == LAVA + 1)) && (BlockData[playerPos] == 0))
 						{
-							if ((WorldData[playerPos + worldLength] == WATER + 1) && (WorldData[playerPos] != 0))
-								WorldData[playerPos] = WATER + 1;
-							if ((WorldData[playerPos + worldLength] == LAVA + 1) && (WorldData[playerPos] != 0))
-								WorldData[playerPos] = LAVA + 1;
-							WorldData[playerPos] = 0;
+							BlockData[playerPos] = WorldData[playerPos + worldLength];
+							if (WorldData[playerPos + worldLength] == WATER + 1)
+								BlockData[playerPos - worldLength] = WATER + 1;
+							if (WorldData[playerPos + worldLength] == LAVA + 1)
+								BlockData[playerPos - worldLength] = LAVA + 1;
+							WorldData[playerPos] = BlockData[playerPos];
 							WorldData[playerPos + worldLength] = SAND + 1;
-							ticks[1] = 5;
+							BlockData[playerPos + worldLength] = 5;
 						}
 						// water flows down
 						if ((WorldData[playerPos] == WATER + 1) && (WorldData[playerPos + worldLength] == 0) && (ticks[2] == 0))
@@ -864,29 +898,28 @@ void WorldEngine(void)
 			if (gamemode != 1)
 			{
 				// health bar (hearts)
-				gfx_FillRectangle(5, 5, 13 * 9, 13);
-				gfx_SetColor(224);
 				i = 0;
-				for (x = 5; x < 5 + 13 * 9; x += 6)
+				for (x = 5; x < 5 + 9 * 9; x += 9)
 				{
 					if (i < health)
-					{
-						gfx_FillRectangle(x, 5, 6, 13);
-					}
-					i++;
+						gfx_TransparentSprite(heart_full, x, 5);
+					if (i >= health)
+						gfx_TransparentSprite(heart_empty, x, 5);
+						if ((i == health) && (!(health % 2)))
+							gfx_TransparentSprite(heart_half, x, 5);
+					i += 2;
 				}
 				// hunger bar
-				gfx_SetColor(32);
-				gfx_FillRectangle(180, 5, 13 * 9, 13);
-				gfx_SetColor(97);
 				i = 0;
-				for (x = 180; x < 260 + 13 * 9; x += 6)
+				for (x = 220; x < 220 + 9 * 9; x += 9)
 				{
 					if (i < hunger)
-					{
-						gfx_FillRectangle(x, 5, 6, 13);
-					}
-					i++;
+						gfx_TransparentSprite(hunger_full, x, 5);
+					if (i >= hunger)
+						gfx_TransparentSprite(hunger_empty, x, 5);
+					if ((i == hunger) && (!(hunger % 2)))
+						gfx_TransparentSprite(hunger2, x, 5);
+					i += 2;
 				}
 				// exp bar
 				gfx_SetColor(6);
@@ -903,9 +936,9 @@ void WorldEngine(void)
 				}
 				gfx_SetColor(32);
 			}
-			gfx_TransparentSprite(Head_1, 16 * 9 + 2, 16 * 5 + 14);
-			gfx_TransparentSprite(Body_1, 16 * 9 + 4, 16 * 5 + 22);
-			gfx_TransparentSprite(Leg_1, 16 * 9 + 4, 16 * 5 + 33);
+			gfx_TransparentSprite(Head_1, 16 * 9 + 3, 16 * 5 + 16);
+			gfx_TransparentSprite(Body_1, 16 * 9 + 5, 16 * 5 + 24);
+			gfx_TransparentSprite(Leg_1, 16 * 9 + 5, 16 * 5 + 35);
 			//memcpy(tempSpr, Leg_1, 14 * 14);
 			//gfx_RotatedScaledTransparentSprite_NoClip(Head_1, 16 * 9 + 2, 16 * 5 + 14, 0, 64);
 			//gfx_RotatedScaledTransparentSprite_NoClip(Body_1, 16 * 9 + 4, 16 * 5 + 22, 0, 64);
@@ -945,6 +978,7 @@ void WorldEngine(void)
 		{
 			delay(100);
 			WorldData[curPos] = hotbar[hotbarSel] + 1;
+			BlockData[curPos] = 0;
 			if (hotbar[hotbarSel] == BEDBACK) WorldData[curPos + 1] = BEDFRONT + 1;
 			if (hotbar[hotbarSel] == BEDFRONT) WorldData[curPos - 1] = BEDBACK + 1;
 			ticks[0] = 1;
@@ -979,7 +1013,6 @@ void WorldEngine(void)
 			delay(100);
 			ticks[0] = 1;
 		}
-		
 
 		if ((kb_IsDown(kb_KeyLeft)) && (playerX > 0))
 		{
@@ -1012,10 +1045,11 @@ void WorldEngine(void)
 
 		/*gfx_SetTextFGColor(0);
 		gfx_SetTextXY(30, 20);
-		gfx_PrintInt(timer, 1);
+		gfx_PrintInt(scrollY, 1);
 		gfx_SetTextXY(30, 40);
-		gfx_PrintInt(flymode, 1);
+		gfx_PrintInt(curY, 1);
 		gfx_SetTextFGColor(254);*/
+
 
 		//if (timer != 0) timer++;
 		//if (timer > 8) timer = 0;
@@ -1025,8 +1059,8 @@ void WorldEngine(void)
 		if (kb_IsDown(kb_KeyVars))
 		{
 			gfx_SetTextFGColor(32);
-			flymode = (flymode == 0);
-			timer = 2;
+			
+			timer = 3;
 			temptimer = 0;
 			ticks[0] = 1;
 			delay(100);
@@ -1045,76 +1079,80 @@ void WorldEngine(void)
 				ticks[0] = 1;
 			}
 		}
+		if ((timer == 3) && (scrollX < 2))
+		{
+			flymode = (flymode == 0);
+			timer = 2;
+		}
 		if (flymode == 1) jump = 0;
 
-		if ((kb_IsDown(kb_KeyUp)) && (jump == 0) && (playerY > 0) && (WorldData[ playerX + 9 + ((playerY + 6) * worldLength) ] == 0))
+		if ((kb_IsDown(kb_KeyUp)) && (jump == 0) && (playerY > 0) && (WorldData[ playerX + 9 + ((playerY + 7) * worldLength) ] == 0))
 		{
 			ticks[0] = 1;
 			scrollY = 0;
 			playerY--;
 			curPos -= worldLength;
-			curY += 4;
 			jump = 1;
 		}
 		//swimming up in water...
 		if ((kb_IsDown(kb_KeyUp)) && (WorldData[ playerX + 9 + ((playerY + 7) * worldLength) ] == WATER + 1))
 		{
 			ticks[0] = 1;
-				if (scrollY > 0)
+			scrollY += 4;
+			curY += 4;
+				if (scrollY > -1)
 				{
 					scrollY = -16;
 					playerY--;
 					curPos -= worldLength;
-					curY -= 16 + 4;
+					curY -= 16;
 				}
-			scrollY += 4;
-			curY += 4;
 		}
 		if ((kb_IsDown(kb_KeyDown)) && (playerY < worldHeight) && (WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == 0))
 		{
 			ticks[0] = 1;
-			if (scrollY < -16)
-			{
-				scrollY = 0;
-				playerY++;
-				curPos += worldLength;
-				curY += 16 + 4;
-			}
 			if (flymode == 1)
 			{
 				scrollY -= 4;
 				curY -= 4;
 			}
-		}
-
-		//gravity, water, and lava (swimming? Don't swim in Lava!)...
-		if ((flymode == 0) && !(kb_IsDown(kb_KeyUp)) && (WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == 0))
-		{
-			ticks[0] = 1;
-			if (scrollY < -16)
+			if (scrollY < -15)
 			{
 				scrollY = 0;
 				playerY++;
 				curPos += worldLength;
-				curY += 16 + 4;
-				jump = 0;
+				curY += 16;
 			}
+		}
+
+		//gravity, water, and lava (swimming? Don't swim in Lava!)...
+		if ((flymode == 0) && (!(kb_IsDown(kb_KeyUp))) && (WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == 0))
+		{
+			ticks[0] = 1;
 			scrollY -= 4;
 			curY -= 4;
+			if (scrollY < -15)
+			{
+				scrollY = 0;
+				playerY++;
+				curPos += worldLength;
+				curY += 16;
+				jump = 0;
+			}
 		}
 		if ((WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == WATER + 1) && (!kb_IsDown(kb_KeyUp)))
 		{
 			ticks[0] = 1;
-			if (scrollY < -16)
+			scrollY -= 4;
+			curY -= 4;
+			if (scrollY < -15)
 			{
 				scrollY = 0;
 				playerY++;
 				curPos += worldLength;
-				curY += 16 + 4;
+				curY += 16;
 				jump = 0;
 			}
-			scrollY -= 4;
-			curY -= 4;
 		}
 
 		if (timeofday % 6000) ticks[0] = 1;
@@ -1172,6 +1210,7 @@ void creativeInventory(void)
 	char *names[4] = { "Nature", "Building", "Redstone", "Tools" };
 	gfx_FillScreen(dayColors[timeofday / 6000]);
 	gfx_SetTextFGColor(0);
+	LoadBlocks("MCEDEFT");
 	selX = 10;
 	selY = 30;
 	posB = 1;
