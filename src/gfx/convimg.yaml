@@ -1,6 +1,6 @@
 
 converts:
-  - name: sprites
+  - name: images
     palette: xlibc
     transparent-color-index: 0
     images:
@@ -21,11 +21,18 @@ converts:
       - Leg_2.png
       - Leg_3.png
       - Leg_4.png
+      - heart_full.png
+      - heart_half.png
+      - heart_empty.png
+      - hunger_full.png
+      - hunger2.png
+      - hunger3.png
+      - hunger_empty.png
 
 outputs:
   - type: c
     converts:
-      - sprites
+      - images
 
 
 

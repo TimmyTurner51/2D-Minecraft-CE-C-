@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#define images_palette_offset 0
 #include "Head_1.h"
 #include "Head_2.h"
 #include "Head_3.h"
@@ -22,6 +23,13 @@ extern "C" {
 #include "Leg_2.h"
 #include "Leg_3.h"
 #include "Leg_4.h"
+#include "heart_full.h"
+#include "heart_half.h"
+#include "heart_empty.h"
+#include "hunger_full.h"
+#include "hunger2.h"
+#include "hunger3.h"
+#include "hunger_empty.h"
 
 #ifdef __cplusplus
 }
