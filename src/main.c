@@ -40,7 +40,7 @@ void drawDirtBackground(int scroll);
 void findAppvars(const char *str);
 void WorldEngine(void);
 
-#define SMOOTHSTONE 1
+#define STONE 1
 #define GRASS 2
 #define DIRT 3
 #define COBBLESTONE 4
@@ -71,6 +71,9 @@ void WorldEngine(void);
 #define REDSTONEDUSTON 29
 #define REGULARPISTONRIGHTOFF 30
 #define COBWEB 31
+
+#define WATERENTITY 32
+#define LAVAENTITY 33
 
 //static char list[20][9]; memcpy(list[found++], name, 9);
 //no longer needed...we have length and height vars now... #define world_ground_height 64
@@ -104,7 +107,7 @@ int24_t blockSel;
 int24_t gamemode;
 bool loaded_world = 0;
 gfx_TempSprite(logo, 16, 16);
-int natureBlocks[13] = {GRASS, DIRT, SMOOTHSTONE, COBBLESTONE, SAND, GRAVEL, OAKLOGS, OAKLEAVES, BEDROCK, COALORE, IRONORE, GOLDORE, LAPIZORE};
+int natureBlocks[13] = {GRASS, DIRT, STONE, COBBLESTONE, SAND, GRAVEL, OAKLOGS, OAKLEAVES, BEDROCK, COALORE, IRONORE, GOLDORE, LAPIZORE};
 int buildingBlocks[3] = {OAKPLANK, GLASS, SPONGE};
 int redstoning[3] = {REDSTONEDUSTOFF, NOTEBLOCK, REGULARPISTONRIGHTOFF};
 int toolsEtc[3] = { BEDBACK, WATER, LAVA };
@@ -564,10 +567,9 @@ void WorldEngine(void)
 	int24_t chunkX, multiplier, seed, playerPosTest, height, flymode, timer, temptimer;
 	int8_t angle, i, health, hunger, exp, bgColor, cloudX, fall;
 	//{grass, sand, water, lava}
-	int ticks[4] = { 0, 0, 0, 0 };
+	int ticks[5] = { 0, 0, 0, 0 };
 	uint8_t xb, yb;
 	gfx_sprite_t *tempSpr = gfx_MallocSprite(14, 14);
-	gfx_SetTransparentColor(252);
 
 		timeofday = 0;
 		flymode = 0;
@@ -644,7 +646,8 @@ void WorldEngine(void)
 
 		//this is an updated generator, and it to be used with the new textures...we now have bedrock too!
 		//thank u LogicalJoe!!
-		height = randInt(30, 80);
+		srand(seed*multiplier+chunkX); // set the seed
+		height = randInt(60, 120);
 
 		//from Zeroko: srand(worldSeed*multiplier+chunkX)
 
@@ -688,7 +691,7 @@ void WorldEngine(void)
 				WorldData[x + (height * worldLength)] = WATER + 1;
 				for (y = height + 1; y < height + randInt(10, 30); y++)
 				{
-					WorldData[x + (y * worldLength)] = WATER + 1;
+					WorldData[x + (y * worldLength)] = WATERENTITY;
 				}
 				height = y - randInt(10, 30);
 			}else{
@@ -700,7 +703,7 @@ void WorldEngine(void)
 			}
 			for (y = height + 3; y < worldHeight; y++)
 			{
-				WorldData[x + y * worldLength] = SMOOTHSTONE + 1;
+				WorldData[x + y * worldLength] = STONE + 1;
 				// cave generation
 				if (randInt(1,13) == 3)
 				{
@@ -814,7 +817,8 @@ void WorldEngine(void)
 			gfx_FillScreen(bgColor);
 			gfx_SetColor(32);
 			playerPos = (playerX + playerY * worldLength);
-			//behaviors w/ block drawing, and fixing cursor bugs by forcing it to "snap to the grid"
+			//behaviors w/ block drawing, and fixing cursor bugs by forcing it to "snap to the grid"		
+			gfx_SetTransparentColor(252);
 			for (y = scrollY; y < 241 + scrollY; y += 16)
 			{
 				for (x = scrollX; x < 321 + scrollX; x += 16)
@@ -824,12 +828,16 @@ void WorldEngine(void)
 					if (WorldData[playerPos] != 0)
 					{
 						// draw the shadowing box (not for water, lava, etc.)
-						if ((WorldData[playerPos] != WATER + 1) && (WorldData[playerPos] != LAVA + 1))
+						if ((WorldData[playerPos] != BEDBACK + 1) && (WorldData[playerPos] != BEDFRONT + 1) && (WorldData[playerPos] != WATER + 1) && (WorldData[playerPos] != LAVA + 1))
 						gfx_FillRectangle(x, y, 16, 16);
 						// check if air is on the left face, right face, top face, and bottom face
 						// (in that order), and draw the block if so
-						if ((WorldData[playerPos] == WATER + 1) || (WorldData[playerPos] == LAVA + 1) || (WorldData[playerPos - 1] == 0) || (WorldData[playerPos + 1] == 0) || (WorldData[playerPos - worldLength] == 0) || (WorldData[playerPos + worldLength] == 0))
-						gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
+						if ((WorldData[playerPos] < 256) && ((WorldData[playerPos] == WATER + 1) || (WorldData[playerPos] == LAVA + 1) || (WorldData[playerPos - 1] == 0) || (WorldData[playerPos + 1] == 0) || (WorldData[playerPos - worldLength] == 0) || (WorldData[playerPos + worldLength] == 0)))
+							gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
+						if (WorldData[playerPos] == WATERENTITY)
+							gfx_TransparentSprite(sprites[WATER], x, y);
+						if (WorldData[playerPos] == LAVAENTITY)
+							gfx_TransparentSprite(sprites[LAVA], x, y);
 						
 						// behaviors
 						// sand falls
@@ -844,17 +852,57 @@ void WorldEngine(void)
 							WorldData[playerPos + worldLength] = SAND + 1;
 							BlockData[playerPos + worldLength] = 5;
 						}
+						// water interacts with lava (source and non-source)
+						if ((WorldData[playerPos] == WATER + 1) || (WorldData[playerPos] == WATERENTITY))
+						{
+							if (WorldData[playerPos + 1] == LAVA + 1) WorldData[playerPos + 1] = NOTHING2 + 1;
+							if (WorldData[playerPos - 1] == LAVA + 1) WorldData[playerPos - 1] = NOTHING2 + 1;
+							if (WorldData[playerPos + 1] == LAVAENTITY) WorldData[playerPos + 1] = COBBLESTONE + 1;
+							if (WorldData[playerPos - 1] == LAVAENTITY) WorldData[playerPos - 1] = COBBLESTONE + 1;
+						}
+						if (((WorldData[playerPos] == LAVA + 1) || (WorldData[playerPos] == LAVAENTITY)) && (WorldData[playerPos + worldLength] == WATER + 1))
+							WorldData[playerPos + worldLength] = STONE + 1;
+						// water can be destroyed
+						if ((WorldData[playerPos] == WATERENTITY) && (WorldData[playerPos - worldLength] != WATER + 1) && (WorldData[playerPos - worldLength] != WATERENTITY) && (ticks[2] == 0))
+						{
+							WorldData[playerPos] = 0;
+							ticks[2] = 10;
+						}
+						// lava can be destroyed
+						if ((WorldData[playerPos] == LAVAENTITY) && (WorldData[playerPos - worldLength] != LAVA + 1) && (WorldData[playerPos - worldLength] != LAVAENTITY) && (ticks[3] == 0))
+						{
+							WorldData[playerPos] = 0;
+							ticks[3] = 18;
+						}
 						// water flows down
 						if ((WorldData[playerPos] == WATER + 1) && (WorldData[playerPos + worldLength] == 0) && (ticks[2] == 0))
 						{
-							WorldData[playerPos + worldLength] = WATER + 1;
+							WorldData[playerPos + worldLength] = WATERENTITY;
 							ticks[2] = 10;
 						}
-						// lava flows down
-						if ((WorldData[playerPos] == LAVA + 1) && (WorldData[playerPos + worldLength] == 0) && (ticks[3] == 0))
+						if ((WorldData[playerPos] == WATERENTITY) && (WorldData[playerPos + worldLength] == 0) && (ticks[2] == 0))
 						{
-							WorldData[playerPos + worldLength] = LAVA + 1;
-							ticks[3] = 15;
+							WorldData[playerPos + worldLength] = WATERENTITY;
+							ticks[2] = 10;
+						}
+						//water flows sideways (left, then right)
+						if (((WorldData[playerPos] == WATER + 1) || (WorldData[playerPos] == WATERENTITY)) && (WorldData[playerPos - 1] == 0) && (WorldData[playerPos + worldLength] != 0) && (ticks[4] < 6))
+						{
+							WorldData[playerPos - 1] = WATERENTITY;
+							ticks[4]++;
+							//if (ticks[4] == 6) ticks[4] = 0;
+						}
+						if (((WorldData[playerPos] == WATER + 1) || (WorldData[playerPos] == WATERENTITY)) && (WorldData[playerPos + 1] == 0) && (WorldData[playerPos + worldLength] != 0) && (ticks[4] < 6))
+						{
+							WorldData[playerPos + 1] = WATERENTITY;
+							ticks[4]++;
+							//if (ticks[4] == 6) ticks[4] = 0;
+						}
+						// lava flows down
+						if (((WorldData[playerPos] == LAVA + 1) || (WorldData[playerPos] == LAVAENTITY)) && (WorldData[playerPos + worldLength] == 0) && (ticks[3] == 0))
+						{
+							WorldData[playerPos + worldLength] = LAVAENTITY;
+							ticks[3] = 18;
 						}
 						// grass turns to dirt when blocks are on top of grass
 						if ((WorldData[playerPos] != 0) && (WorldData[playerPos + worldLength] == GRASS + 1) && (ticks[0] == 0))
@@ -872,7 +920,7 @@ void WorldEngine(void)
 			if (health < 1)
 			{
 				gfx_SetColor(148);
-				gfx_FillRectangle(80, 200, 80, 20);
+				gfx_FillRectangle(80, 200, 160, 20);
 				gfx_SetTextScale(2, 2);
 				gfx_PrintStringXY("RESPAWN", 84, 204);
 				gfx_BlitBuffer();
@@ -983,7 +1031,7 @@ void WorldEngine(void)
 			hotbarSel = 4;
 			ticks[0] = 1;
 		}
-		if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0) && (hotbar[hotbarSel] != 0))
+		if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0) && (hotbar[hotbarSel] != 0) && ((WorldData[curPos - 1] != 0) || (WorldData[curPos + 1] != 0) || (WorldData[curPos - worldLength] != 0) || (WorldData[curPos + worldLength] != 0)))
 		{
 			delay(100);
 			WorldData[curPos] = hotbar[hotbarSel] + 1;
@@ -995,6 +1043,8 @@ void WorldEngine(void)
 		if (kb_IsDown(kb_KeyDel) && (WorldData[curPos] != 0))
 		{
 			delay(100);
+			if (WorldData[curPos] == BEDBACK) WorldData[curPos + 1] = 0;
+			if (WorldData[curPos] == BEDFRONT) WorldData[curPos - 1] = 0;
 			WorldData[curPos] = 0;
 			ticks[0] = 1;
 		}
@@ -1022,6 +1072,11 @@ void WorldEngine(void)
 			delay(100);
 			ticks[0] = 1;
 		}
+
+		if (curX <= 0) curX += 16;
+		if (curX >= 320) curX -= 16;
+		if (curY <= 0) curY += 16;
+		if (curY >= 240) curY += 16;
 
 		if ((kb_IsDown(kb_KeyLeft)) && (playerX > 0))
 		{
@@ -1098,7 +1153,7 @@ void WorldEngine(void)
 		if ((kb_IsDown(kb_KeyUp)) && (jump == 0) && (playerY > 0) && (WorldData[ playerX + 9 + ((playerY + 7) * worldLength) ] == 0))
 		{
 			ticks[0] = 1;
-			scrollY = 0;
+			//scrollY = 0;
 			playerY--;
 			curPos -= worldLength;
 			jump = 1;
