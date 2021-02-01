@@ -134,6 +134,25 @@ char oldSeedStr[20] = "Random Seed";
 //char *str;
 
 
+uint32_t hashstr(char *s);
+uint32_t hashstr(char *s) {
+    uint32_t hash = 0;
+    size_t len = strlen(s);
+    char c;
+    while ((c = *s) != '\0') {
+        int coe;
+        if (isdigit(c)) {
+            coe = c - '0';
+        } else {
+            coe = c - 'A' + 10;
+        }
+        hash += coe*pow(36, len);
+        s++;
+        len--;
+    }
+    return hash;
+}
+
 void main(void)
 {
 	ti_var_t appvar;
@@ -651,9 +670,9 @@ void WorldEngine(void)
 
 		//from Zeroko: srand(worldSeed*multiplier+chunkX)
 
-		//seed = 7920013911;
 		//seed = 4018820011;
-		seed = 2909712951;
+		//seed = 7920013911;
+		seed = hashstr(seedStr);
 		chunkX = 0;
 		
 		multiplier = seed / 2;
@@ -891,17 +910,36 @@ void WorldEngine(void)
 							ticks[2] = 10;
 						}
 						//water flows sideways (right, then left)
-						if ((WorldData[playerPos] == WATERENTITY) && (WorldData[playerPos - 1] == 0) && (WorldData[playerPos + (worldLength * 2)] != 0) && (ticks[4] < 6))
+						if ((WorldData[playerPos] == WATERENTITY) && (WorldData[playerPos - 1] == 0) && (WorldData[playerPos + (worldLength * 2)] != 0) && (ticks[4] < 6) && (ticks[2] == 0))
 						{
 							if (WorldData[playerPos - 1 + worldLength] == 0)
 								WorldData[playerPos - 1 + worldLength] = WATERENTITY;
 							ticks[4]++;
+							ticks[2] = 10;
 						}
-						if ((WorldData[playerPos] == WATERENTITY) && (WorldData[playerPos + 1] == 0) && (WorldData[playerPos + (worldLength * 2)] != 0) && (ticks[5] < 6))
+						if ((WorldData[playerPos] == WATERENTITY) && (WorldData[playerPos + 1] == 0) && (WorldData[playerPos + (worldLength * 2)] != 0) && (ticks[5] < 6) && (ticks[2] == 0))
 						{
 							if (WorldData[playerPos + 1 + worldLength] == 0)
 								WorldData[playerPos + 1 + worldLength] = WATERENTITY;
 							ticks[5]++;
+							ticks[2] = 10;
+						}
+						ticks[4] = 0;
+						ticks[5] = 0;
+						//lava flows sideways (right, then left)
+						if ((WorldData[playerPos] == LAVAENTITY) && (WorldData[playerPos - 1] == 0) && (WorldData[playerPos + (worldLength * 2)] != 0) && (ticks[4] < 6) && (ticks[3] == 0))
+						{
+							if (WorldData[playerPos - 1 + worldLength] == 0)
+								WorldData[playerPos - 1 + worldLength] = LAVAENTITY;
+							ticks[4]++;
+							ticks[3] = 18;
+						}
+						if ((WorldData[playerPos] == LAVAENTITY) && (WorldData[playerPos + 1] == 0) && (WorldData[playerPos + (worldLength * 2)] != 0) && (ticks[5] < 6) && (ticks[3] == 0))
+						{
+							if (WorldData[playerPos + 1 + worldLength] == 0)
+								WorldData[playerPos + 1 + worldLength] = LAVAENTITY;
+							ticks[5]++;
+							ticks[3] = 18;
 						}
 						// lava flows down
 						if (((WorldData[playerPos] == LAVA + 1) || (WorldData[playerPos] == LAVAENTITY)) && (WorldData[playerPos + worldLength] == 0) && (ticks[3] == 0))
