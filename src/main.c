@@ -840,6 +840,11 @@ void WorldEngine(void)
 							gfx_TransparentSprite(sprites[LAVA], x, y);
 						
 						// behaviors
+						if (WorldData[playerPos] == WATERENTITY)
+						{
+							ticks[4] = 0;
+							ticks[5] = 0;
+						}
 						// sand falls
 						if ((WorldData[playerPos] == SAND + 1) && ((WorldData[playerPos + worldLength] == 0) || (WorldData[playerPos + worldLength] == WATER + 1) || (WorldData[playerPos + worldLength] == LAVA + 1)) && (BlockData[playerPos] == 0))
 						{
@@ -885,18 +890,18 @@ void WorldEngine(void)
 							WorldData[playerPos + worldLength] = WATERENTITY;
 							ticks[2] = 10;
 						}
-						//water flows sideways (left, then right)
-						if (((WorldData[playerPos] == WATER + 1) || (WorldData[playerPos] == WATERENTITY)) && (WorldData[playerPos - 1] == 0) && (WorldData[playerPos + worldLength] != 0) && (ticks[4] < 6))
+						//water flows sideways (right, then left)
+						if ((WorldData[playerPos] == WATERENTITY) && (WorldData[playerPos - 1] == 0) && (WorldData[playerPos + (worldLength * 2)] != 0) && (ticks[4] < 6))
 						{
-							WorldData[playerPos - 1] = WATERENTITY;
+							if (WorldData[playerPos - 1 + worldLength] == 0)
+								WorldData[playerPos - 1 + worldLength] = WATERENTITY;
 							ticks[4]++;
-							//if (ticks[4] == 6) ticks[4] = 0;
 						}
-						if (((WorldData[playerPos] == WATER + 1) || (WorldData[playerPos] == WATERENTITY)) && (WorldData[playerPos + 1] == 0) && (WorldData[playerPos + worldLength] != 0) && (ticks[4] < 6))
+						if ((WorldData[playerPos] == WATERENTITY) && (WorldData[playerPos + 1] == 0) && (WorldData[playerPos + (worldLength * 2)] != 0) && (ticks[5] < 6))
 						{
-							WorldData[playerPos + 1] = WATERENTITY;
-							ticks[4]++;
-							//if (ticks[4] == 6) ticks[4] = 0;
+							if (WorldData[playerPos + 1 + worldLength] == 0)
+								WorldData[playerPos + 1 + worldLength] = WATERENTITY;
+							ticks[5]++;
 						}
 						// lava flows down
 						if (((WorldData[playerPos] == LAVA + 1) || (WorldData[playerPos] == LAVAENTITY)) && (WorldData[playerPos + worldLength] == 0) && (ticks[3] == 0))
