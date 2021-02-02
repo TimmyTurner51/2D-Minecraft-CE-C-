@@ -27,6 +27,8 @@
 #include <debug.h>
 #include "gfx/gfx.h"
 
+#include <ctype.h>
+
 //no need for this unless there's actual gfx data that needs to be written to the program :P
 
 #include "compressor.h" //zx7 compression routines
@@ -121,22 +123,19 @@ uint8_t user_input(char *buffer, size_t length); //user input subroutine. src/as
 
 void compressAndWrite(void *data, int len, ti_var_t fp); //this routine compresses using zx7_Compression
 
-//these may need to stay static, used in both main/playMenu (for new world setup) and WorldEngine...
 int24_t worldHeight = 200;
 int24_t worldLength = 200;
 int24_t worldType = 0;
 int24_t hotbarSel = 0;
+int24_t seed = 0;
 
 char worldNameStr[20] = "My World";
 char seedStr[20] = "Random Seed";
-char oldNameStr[20] = "My World";
-char oldSeedStr[20] = "Random Seed";
-//char *str;
 
+int32_t hashstr(char *s);
 
-uint32_t hashstr(char *s);
-uint32_t hashstr(char *s) {
-    uint32_t hash = 0;
+int32_t hashstr(char *s) {
+    int32_t hash = 0;
     size_t len = strlen(s);
     char c;
     while ((c = *s) != '\0') {
@@ -150,7 +149,7 @@ uint32_t hashstr(char *s) {
         s++;
         len--;
     }
-    return hash;
+    seed = hash;
 }
 
 void main(void)
@@ -170,8 +169,7 @@ void main(void)
 
 void MainMenu(void)
 {
-	int24_t CursorY, x, i, option, test, scroll, scrollY, redraw, timer, val, tab, worldLength, worldHeight;
-	int24_t worldSize, cheats;
+	int24_t i, scroll, redraw;
 	i = y;
 	scroll = 16;
 	redraw = 1;
@@ -258,9 +256,8 @@ void MainMenu(void)
 void playMenu(void)
 {
 
-	int24_t CursorY, x, i, option, test, scroll, scrollY, redraw, timer, val, tab;
-	int24_t worldLength, worldHeight, cheats, key, scrollYb;
-	char *chars = "\0\0\0\0\0\0\0\0\0\0\"WRMH\0\0?[VQLG\0\0:ZUPKFC\0 YTOJEB\0\0XSNIDA\0\0\0\0\0\0\0\0";
+	int24_t CursorY, i, scroll, redraw, tab;
+	int24_t worldLength, worldHeight, cheats, scrollYb;
 	char *gamemodeStr[3] = {"Survival", "Creative", "Hardcore"};
 	char *difficultyStr[4] = {"Peaceful", "Easy", "Normal", "Hard"};
 	char *cheatsStr[2] = {"Off", "On"};
@@ -374,20 +371,22 @@ void playMenu(void)
 							gfx_SetColor(0);
 							gfx_Rectangle(50, y, 220, 16);
 							gfx_Rectangle(51, y + 1, 218, 14);
+							gfx_SetColor(148);
+							if (y < 200) gfx_FillRectangle(152, y + 3, 94, 10);
 						}
-						gfx_PrintStringXY("World Name:", 74, 84);
-						gfx_PrintStringXY(&worldNameStr, 150, 84);
-						gfx_PrintStringXY("Seed:", 74, 104);
-						gfx_PrintStringXY(&seedStr, 114, 104);
-						gfx_PrintStringXY("Gamemode:", 74, 124);
-						gfx_PrintStringXY(gamemodeStr[gamemode], 144, 124);
-						gfx_PrintStringXY("Difficulty:", 74, 144);
+						gfx_PrintStringXY("World Name:", 73, 84);
+						gfx_PrintStringXY(&worldNameStr, 154, 84);
+						gfx_PrintStringXY("Seed:", 73, 104);
+						gfx_PrintStringXY(&seedStr, 154, 104);
+						gfx_PrintStringXY("Gamemode:", 73, 124);
+						gfx_PrintStringXY(gamemodeStr[gamemode], 154, 124);
+						gfx_PrintStringXY("Difficulty:", 73, 144);
 						gfx_PrintStringXY(difficultyStr[difficulty], 154, 144);
-						gfx_PrintStringXY("Cheats:", 74, 164);
-						gfx_PrintStringXY(cheatsStr[cheats], 144, 164);
-						gfx_PrintStringXY("World Type:", 74, 184);
-						gfx_PrintStringXY(worldTypesStr[worldType], 150, 184);
-						gfx_PrintStringXY("Generate", 74, 204);
+						gfx_PrintStringXY("Cheats:", 73, 164);
+						gfx_PrintStringXY(cheatsStr[cheats], 154, 164);
+						gfx_PrintStringXY("World Type:", 73, 184);
+						gfx_PrintStringXY(worldTypesStr[worldType], 154, 184);
+						gfx_PrintStringXY("Generate", 128, 204);
 						gfx_SetColor(254);
 						gfx_Rectangle(50, CursorY, 220, 16);
 						gfx_Rectangle(51, CursorY + 1, 218, 14);
@@ -458,6 +457,8 @@ void playMenu(void)
 
 							dbg_sprintf(dbgout, "%s", world_file);
 
+							if (seedStr == "Random Seed") srand(rtc_Time());
+							hashstr(seedStr);
 							WorldEngine();
 							delay(200);
 							redraw = 1;
@@ -505,7 +506,7 @@ void playMenu(void)
 
 void Achievements(void)
 {
-	int24_t x, y, i, redraw;
+	int24_t x, y;
 	drawDirtBackground(0);
 	gfx_SetColor(181);
 	gfx_FillCircle(10, 10, 5);
@@ -583,7 +584,7 @@ void WorldEngine(void)
 {
 	ti_var_t appvar;
 	int24_t redraw, x, y, scrollX, scrollY, playerX, playerY, playerPos, curX, curY, posX, jump;
-	int24_t chunkX, multiplier, seed, playerPosTest, height, flymode, timer, temptimer;
+	int24_t chunkX = 0, multiplier = 0, playerPosTest, height, flymode, timer, temptimer;
 	int8_t angle, i, health, hunger, exp, bgColor, cloudX, fall;
 	//{grass, sand, water, lava}
 	int ticks[5] = { 0, 0, 0, 0 };
@@ -618,7 +619,7 @@ void WorldEngine(void)
 
 		//set selected block to grass block...
 		//blockSel = 1;
-	if (appvar = ti_Open(world_file, "r"))
+	if (appvar = (ti_Open(world_file, "r")))
 	{
 		if (!memcmp(ti_GetDataPtr(appvar), "MCCESV", 6))
 		{
@@ -670,9 +671,6 @@ void WorldEngine(void)
 
 		//from Zeroko: srand(worldSeed*multiplier+chunkX)
 
-		//seed = 4018820011;
-		//seed = 7920013911;
-		seed = hashstr(seedStr);
 		chunkX = 0;
 		
 		multiplier = seed / 2;
@@ -1152,7 +1150,7 @@ void WorldEngine(void)
 
 		gfx_SetTextFGColor(0);
 		gfx_SetTextXY(30, 20);
-		gfx_PrintInt(playerX, 1);
+		gfx_PrintInt(seed, 1);
 		gfx_SetTextXY(30, 40);
 		gfx_PrintInt(256 - playerY, 1);
 		gfx_SetTextFGColor(254);
@@ -1672,5 +1670,7 @@ void compressAndWrite(void *data, int len, ti_var_t fp)
 
 	zx7_Compress((void *)0xD52C00, data, &new_len, len);
 	ti_Write((void *)0xD52C00, new_len, 1, fp);
-	main();
+	y = 125;
+	gfx_End();
+	MainMenu();
 }
