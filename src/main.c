@@ -1,270 +1,1597 @@
 ////////////////////////////////////////////////////////////////////////////////
-//  2D Minecraft CE (C)
+//  2D Minecraft CE *lite* (C) v1.0.2a
 //  Authors: TimmyTurner51, LogicalJoe, and Beckadamtheinventor
-//  License: ??
+//  License: GNU GPL v3
 //  Description: A 2D Minecraft clone made for the TI-84 Plus CE, written in C.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define usb_callback_data_t usb_device_t
-
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+//#include <stdio.h>
+//#include <stdbool.h>
+//#include <stddef.h>
+//#include <stdint.h>
 #include <tice.h>
 #include <math.h>
-#include <stdio.h>
+//#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <debug.h>
+//#include <debug.h>
 
 #include <graphx.h>
 #include <keypadc.h>
 #include <fileioc.h>
 
-#include <srldrvce.h>
-#include <usbdrvce.h>
+// include when multiplayer is reasonable
+//#include <srldrvce.h>
+//#include <usbdrvce.h>
 
-#include <debug.h>
 #include "gfx/gfx.h"
 
 #include <ctype.h>
 
-//no need for this unless there's actual gfx data that needs to be written to the program :P
-
 #include "compressor.h" //zx7 compression routines
+#include "defines.h"
 
-void MainMenu(void);
-void Achievements(void);
-void Settings(void);
-void playMenu(void);
+//#define usb_callback_data_t usb_device_t
+
+void LoadTextures(char *name, int16_t spritenumber, int16_t spritesize, int16_t arraynum);
+void LoadResourcesScreen(void);
+void DrawCenteredText(char *inputstr, int centerXpos, int ypos);
+void DrawDirtBackground(int16_t scrollVal);
+void Generator(void);
+void Game(void);
+void RenderEngine(void);
+void deathScreen(void);
+void Behaviors(int16_t position, int16_t timerPos);
+void survivalInventory(void);
+int craftingCheck(int16_t inputVal);
+void giveItem(int16_t blockID, int16_t amount);
 void creativeInventory(void);
-void drawDirtBackground(int scroll);
-void findAppvars(const char *str);
-void WorldEngine(void);
+void pauseMenu(void);
+void input(char *string, int size);
 
-#define STONE 1
-#define GRASS 2
-#define DIRT 3
-#define COBBLESTONE 4
-#define OAKPLANK 5
-#define OAKSAPLING 6
-#define BEDROCK 7
-#define WATER 8
-#define NOTHING1 9
-#define LAVA 10
-#define NOTHING2 11
-#define SAND 12
-#define GRAVEL 13
-#define GOLDORE 14
-#define IRONORE 15
-#define COALORE 16
-#define OAKLOGS 17
-#define OAKLEAVES 18
-#define SPONGE 19
-#define GLASS 20
-#define LAPIZORE 21
-#define LAPIZBLOCK 22
-#define DISPENSER 23
-#define SANDSTONE 24
-#define NOTEBLOCK 25
-#define BEDBACK 26
-#define BEDFRONT 27
-#define REDSTONEDUSTOFF 28
-#define REDSTONEDUSTON 29
-#define REGULARPISTONRIGHTOFF 30
-#define COBWEB 31
+// Amount of chunks to render (chunks are 16x16) max is 5 by 5 for now
+int16_t renderX = 1, renderY = 1;
 
-#define WATERENTITY 32
-#define LAVAENTITY 33
+// Amount of Pixels to scroll. Ranges from 1 - 16. 1 being smooth but slowest, 16 being jumpy but fastest.
+int16_t pixelAmount = 4;
+// Amount of Pixels to scroll for falling/gravity (use 1, 2, 4, 6, 8, or 16)
+int16_t gravityPixelAmount = 5;
 
-//static char list[20][9]; memcpy(list[found++], name, 9);
-//no longer needed...we have length and height vars now... #define world_ground_height 64
-
-gfx_sprite_t *sprites[254];
-gfx_sprite_t dummy_sprite = {1, 1, 0};
-
-//define the world data list
-char WorldData[256 * 256] = { 0 };
-// 0 = redstone off/null; 1 = redstone on; 2 = Water where sand/gravel fall; 3 = Lava where sand/gravel falls;
-// anything > 3 = timer for the corresponding block in the same pos in WorldData array; 
-char BlockData[20 * 16] = { 0 };
-char *world_file = "MCCESAVE";
-//hopefully a static 'y' will fix some menu bugs...
-int16_t x, y, pos;
-//{ name of world 1, name of world 2, etc. }
-char WorldsList[20][9];
-//{ name of server 1, name of server 2, etc. }
-char Servers[20][20];
-char FriendsList[20][20];
-
-int24_t timeofday, difficulty;
-int24_t playerX;
-int24_t playerY;
-int24_t curX;
-int24_t curY;
-int24_t curPos;
-int24_t hotbar[5] = {0};
-int24_t hotbarCur;
-int24_t blockSel;
-int24_t gamemode;
-bool loaded_world = 0;
-gfx_TempSprite(logo, 16, 16);
-int natureBlocks[13] = {GRASS, DIRT, STONE, COBBLESTONE, SAND, GRAVEL, OAKLOGS, OAKLEAVES, BEDROCK, COALORE, IRONORE, GOLDORE, LAPIZORE};
-int buildingBlocks[3] = {OAKPLANK, GLASS, SPONGE};
-int redstoning[3] = {REDSTONEDUSTOFF, NOTEBLOCK, REGULARPISTONRIGHTOFF};
-int toolsEtc[3] = { BEDBACK, WATER, LAVA };
-
-int typesvalues[4] = {13, 3, 3, 3};
-
-uint8_t foundCount; // used to stop the code from finding too many appvars
-uint8_t dayColors[5] = {191, 158, 125, 51, 9};
-
-uint8_t user_input(char *buffer, size_t length); //user input subroutine. src/asm/user_input.asm
-
-void compressAndWrite(void *data, int len, ti_var_t fp); //this routine compresses using zx7_Compression
-
-int24_t worldHeight = 200;
-int24_t worldLength = 200;
-int24_t worldType = 0;
-int24_t hotbarSel = 0;
-int24_t seed = 0;
-
-char worldNameStr[20] = "My World";
-char seedStr[20] = "Random Seed";
-
-int32_t hashstr(char *s);
-
-int32_t hashstr(char *s) {
-    int32_t hash = 0;
-    size_t len = strlen(s);
-    char c;
-    while ((c = *s) != '\0') {
-        int coe;
-        if (isdigit(c)) {
-            coe = c - '0';
-        } else {
-            coe = c - 'A' + 10;
-        }
-        hash += coe*pow(36, len);
-        s++;
-        len--;
-    }
-    seed = hash;
-}
-
-void main(void)
+int main(void)
 {
-	ti_var_t appvar;
-	gfx_Begin(); //This sets the default palette, no need to set the palette again
+	gfx_Begin();
 	ti_CloseAll();
 	gfx_SetClipRegion(-17, -17, 337, 257);
-	LoadBlocks("MCEDEFT");
-	appvar = ti_Open("MC2DDAT", "r");
-	logo = ti_GetDataPtr(appvar);
-	ti_Close(appvar);
-	y = 125;
 	gfx_SetDrawBuffer();
+	gfx_SetTextFGColor(0);
+	LoadResourcesScreen();
 	MainMenu();
+	// quit the game
+	gfx_End();
+	appvar = ti_Open("MCESETT", "w+");
+	ti_Write(gameSettings, sizeof gameSettings, 1, appvar);
+	ti_CloseAll();
 }
 
-void MainMenu(void)
+void LoadTextures(char *name, int16_t spritenumber, int16_t spritesize, int16_t arraynum)
 {
-	int24_t i, scroll, redraw;
-	i = y;
-	scroll = 16;
-	redraw = 1;
-	gfx_SetTransparentColor(255);
-	while (!(kb_IsDown(kb_Key2nd)))
-	{ //draw the main menu
+	uint8_t *ptr;
+	if (spritenumber >= 0 && arraynum > 0 && arraynum <= 4) {
+		ptr = os_GetAppVarData(name, NULL)->data;
+		if (arraynum == 1) BlockTextures[spritenumber] = (gfx_sprite_t *)(ptr + (spritenumber * (spritesize + 2)));
+		if (arraynum == 2) ItemTextures[spritenumber] = (gfx_sprite_t *)(ptr + (spritenumber * (spritesize + 2)));
+		if (arraynum == 3) PlantTextures[spritenumber] = (gfx_sprite_t *)(ptr + (spritenumber * (spritesize + 2)));
+		if (arraynum == 4) FoliageTextures[spritenumber] = (gfx_sprite_t *)(ptr + (spritenumber * (spritesize + 2)));
+	}
+}
+
+void LoadResourcesScreen(void) {
+	int16_t pos, num, speedVal = 1;
+	appvar = ti_Open("MCESETT", "r");
+	if (appvar) ti_Read(gameSettings, sizeof gameSettings, 1, appvar);
+	ti_Close(appvar);
+	if (gameSettings[1] > 0) {
+		for (pos = 0; pos < gameSettings[1]; pos++) {
+			speedVal = speedVal + speedVal;
+		}
+	}
+	pixelAmount = speedVal;
+	shadowing = gameSettings[2];
+	// load languages/menu elements
+	if (gameSettings[0] == 0) {
+		memcpy(gamemodeStr, gamemodeStrEN, sizeof gamemodeStrEN);
+		memcpy(worldSizeStr, worldSizeStrEN, sizeof worldSizeStrEN);
+		memcpy(worldTypesStr, worldTypesStrEN, sizeof worldTypesStrEN);
+		memcpy(togglesOnOff, togglesOnOffEN, sizeof togglesOnOffEN);
+		memcpy(SpeedStr, SpeedStrEN, sizeof SpeedStrEN);
+		memcpy(GameOptionStr, GameOptionStrEN, sizeof GameOptionStrEN);
+		memcpy(MenuElements, MenuElementsEN, sizeof MenuElementsEN);
+		memcpy(NewWorldMenuElements, NewWorldMenuElementsEN, sizeof NewWorldMenuElementsEN);
+		memcpy(About, AboutEN, sizeof AboutEN);
+	}
+	if (gameSettings[0] == 1) {
+		memcpy(gamemodeStr, gamemodeStrNL, sizeof gamemodeStrNL);
+		memcpy(worldSizeStr, worldSizeStrNL, sizeof worldSizeStrNL);
+		memcpy(worldTypesStr, worldTypesStrNL, sizeof worldTypesStrNL);
+		memcpy(togglesOnOff, togglesOnOffNL, sizeof togglesOnOffNL);
+		memcpy(SpeedStr, SpeedStrNL, sizeof SpeedStrNL);
+		memcpy(GameOptionStr, GameOptionStrNL, sizeof GameOptionStrNL);
+		memcpy(MenuElements, MenuElementsNL, sizeof MenuElementsNL);
+		memcpy(NewWorldMenuElements, NewWorldMenuElementsNL, sizeof NewWorldMenuElementsNL);
+		memcpy(About, AboutNL, sizeof AboutNL);
+	}
+
+	// load default textures
+	gfx_FillScreen(224);
+	// rectangle outline
+	gfx_SetColor(255);
+	gfx_Rectangle(157 - 2 * 30, 139, 4 * 30, 20);
+	gfx_Rectangle(158 - 2 * 30, 140, 4 * 30 - 2, 18);
+	for (pos = 1; pos < 5; pos++) {
+		gfx_FillRectangle(160 - 2 * 30, 142, (pos * 30) - 6, 14);
+		gfx_BlitBuffer();
+		for (num = 0; num < MaxSprites[pos - 1]; num++) {
+			if (pos == 1) LoadTextures("CLASSICB", num, 16 * 16, pos);
+			if (pos == 2) LoadTextures("CLASSICI", num, 16 * 16, pos);
+			if (pos == 3) LoadTextures("CLASSICP", num, 16 * 16, pos);
+			if (pos == 4) LoadTextures("CLASSICF", num, 16 * 16, pos);
+		}
+	}
+}
+
+void DrawCenteredText(char *inputstr, int centerXpos, int ypos)
+{
+	gfx_PrintStringXY(inputstr, centerXpos - gfx_GetStringWidth(inputstr) / 2, ypos);
+}
+
+void Generator(void)
+{
+	uint16_t x = 0, y = 0, xb = 91, blockType = 0, terrainVal, biomeVal = 0;
+	uint16_t xa, ya;
+	uint16_t lengthA = 0, lengthB = 0, testX = 0, testY = 0;
+	uint16_t groundLevel = 33, groundLevelB, pos = 0, posb = 0, posc = 0, posd = 0;
+	memset(WorldData, 0, sizeof WorldData);
+	DrawDirtBackground(0);
+	gfx_SetTextFGColor(254);
+	DrawCenteredText(MenuElements[19], 160, 90);
+	DrawCenteredText(MenuElements[20], 160, 104);
+	gfx_SetColor(148);
+	gfx_FillRectangle(90, 120, 320 - 180, 7);
+	gfx_SetColor(0);
+	gfx_Rectangle(90, 120, 320 - 180, 7);
+	gfx_SetColor(6);
+	gfx_SetTextFGColor(0);
+	// 0 = off, 1 = on
+	flymode = 0;
+	x = 0;
+
+	while (x < MaxX)
+	{
+		gfx_VertLine(xb, 121, 5);
+		gfx_BlitBuffer();
+		if (xb < 228)
+			xb++;
+		// tries to further randomize the world, to prevent repetitive chunks
+		if (x % 20) srand(rtc_Time() * x / 20);
+
+		// hills
+		if (worldType != 1) {
+			// randomize biome
+			// 0 = plains, 1 = desert, 2 = forest, 3 = pond/lake/ocean, 4 = plains village, 5 = sand village
+			if (randInt(0, 8) == 0) biomeVal = randInt(0, 5);
+			terrainVal = 1 + (randInt(0, 1) * randInt(0, 3) * (biomeVal != 3));
+			if ((groundLevel > 1) && (groundLevel < MaxY) && (randInt(0, 12) != 1))
+				groundLevel += (worldType != 1) * randInt(0 - terrainVal, terrainVal);
+		}else{
+			biomeVal = 0;
+			groundLevel = 34;
+		}
+
+		if (genTrees == 1 && worldType != 1) {
+			// tree generation
+			if (biomeVal != 1 && randInt(0, 8 - ((biomeVal == 1) * 3)) == 0 && WorldData[x + (groundLevel * MaxX)] != 234)
+			{
+				// oak tree
+				pos = groundLevel - 7;
+				WorldData[x + ((pos + 2) * MaxX)] = 151;
+				WorldData[x + ((pos + 3) * MaxX)] = 151;
+				WorldData[x + ((pos + 4) * MaxX)] = 151;
+				WorldData[x + ((pos + 5) * MaxX)] = 151;
+				WorldData[x + ((pos + 6) * MaxX)] = 151;
+				WorldData[x + ((pos + 7) * MaxX)] = 151;
+				WorldData[x + (pos * MaxX)] = 222;
+				WorldData[x - 1 + (pos * MaxX)] = (222 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
+				WorldData[x + 1 + (pos * MaxX)] = (222 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
+				WorldData[x + ((pos + 1) * MaxX)] = 222;
+				WorldData[x - 1 + ((pos + 1) * MaxX)] = 222;
+				WorldData[x + 1 + ((pos + 1) * MaxX)] = 222;
+				WorldData[x + ((pos + 2) * MaxX)] = 222;
+				WorldData[x - 1 + ((pos + 2) * MaxX)] = 222;
+				WorldData[x - 1 + ((pos + 3) * MaxX)] = 222;
+				WorldData[x - 2 + ((pos + 2) * MaxX)] = (222 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
+				WorldData[x - 2 + ((pos + 3) * MaxX)] = (222 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
+				WorldData[x + 1 + ((pos + 2) * MaxX)] = 222;
+				WorldData[x + 1 + ((pos + 3) * MaxX)] = 222;
+				WorldData[x + 2 + ((pos + 2) * MaxX)] = (222 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
+				WorldData[x + 2 + ((pos + 3) * MaxX)] = (222 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
+			}
+			if (biomeVal != 1 && (randInt(0, 8 - ((biomeVal == 1) * 3)) == 0) && (WorldData[x + (groundLevel * MaxX)] != 234))
+			{
+				// spruce
+				pos = groundLevel - 6;
+				WorldData[x + (pos * MaxX)] = 223;
+				WorldData[x + ((pos + 1) * MaxX)] = 223;
+				WorldData[x - 1 + ((pos + 1) * MaxX)] = 223;
+				WorldData[x + 1 + ((pos + 1) * MaxX)] = 223;
+				WorldData[x + ((pos + 2) * MaxX)] = 199;
+				WorldData[x + ((pos + 3) * MaxX)] = 199;
+				WorldData[x + ((pos + 4) * MaxX)] = 199;
+				WorldData[x + ((pos + 5) * MaxX)] = 199;
+				if (randInt(0, 3) == 1)
+				{
+					WorldData[x - 1 + ((pos + 3) * MaxX)] = 223;
+					WorldData[x + 1 + ((pos + 3) * MaxX)] = 223;
+					WorldData[x - 1 + ((pos + 5) * MaxX)] = 223;
+					WorldData[x + 1 + ((pos + 5) * MaxX)] = 223;
+					WorldData[x - 2 + ((pos + 5) * MaxX)] = 223;
+					WorldData[x + 2 + ((pos + 5) * MaxX)] = 223;
+				}
+			}
+			// jungle = 118
+			// dark oak = 72
+			// acacia = 3
+		}
+
+		// foliage start at MaxSprites[0] + 1
+		// plants start at MaxSprites[0] + MaxSprites[3] + 1
+		// flowers (anything non-desert)
+		if (genFlowers == 1 && (biomeVal == 0 || biomeVal == 2) && randInt(0, 2) == 0 && WorldData[x + ((groundLevel - 1) * MaxX)] == 0)
+		{
+			if (randInt(0, 2) == 0)
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 2;
+			if (randInt(0, 2) == 0)
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 3;
+			if (randInt(0, 2) == 0)
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 9;
+			if (randInt(0, 2) == 0)
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 19;
+			if (randInt(0, 2) == 0)
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 23;
+			if (randInt(0, 2) == 0)
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 31;
+			if (randInt(0, 2) == 0)
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 37;
+			if (randInt(0, 2) == 0)
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 38;
+			if (randInt(0, 2) == 0)
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 41;
+			if (randInt(0, 2) == 0)
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 42;
+			if (randInt(0, 2) == 0)
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 48;
+			// berries
+			if (randInt(0, 2) == 0)
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 56;
+			if (randInt(0, 2) == 0)
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 74;		// 73
+			// rose bush
+			if (randInt(0, 2) == 0)
+			{
+				if (randInt(0, 2) == 0)
+				{
+					WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 49;
+					WorldData[x + ((groundLevel - 2) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 50;
+				}
+				else
+				{
+					WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 50;
+				}
+			}
+			if (randInt(0, 2) == 0)
+			{
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 29;
+				WorldData[x + ((groundLevel - 2) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 30;
+			}
+			if (randInt(0, 2) == 0)
+			{
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 39;
+				WorldData[x + ((groundLevel - 2) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 40;
+			}
+		}
+		// desert foliage (dead shrubs, cactus, etc.)
+		if (biomeVal == 1 && randInt(0, 2) == 0 && WorldData[x + ((groundLevel - 1) * MaxX)] == 0)
+		{
+			// dead shrubs
+			if (randInt(0, 2) == 0)
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 25;
+			// cactus
+			if (randInt(0, 2) == 0)
+			{
+				for (terrainVal = groundLevel - 1 - randInt(0, 2); terrainVal < groundLevel; terrainVal++)
+				{
+					WorldData[x + (terrainVal * MaxX)] = 40;
+				}
+			}
+		}
+
+		
+		// Village Generation
+		lengthA = randInt(3, 7);
+		if (genVillages == 1 && biomeVal == 4 && (groundLevel >= 34 || worldType == 1) && x < MaxX - lengthA * 7)
+		{
+			// 7 is the size of a 5-block long/small house, plus 2 for 1 block ground spacing on each side
+			// we can generate wider buildings, that are 12 blocks long + 2 for ground blocks (again, 1 on each side)
+			lengthB = 0;
+			posd = 8;
+			// left-right
+			for (posb = x; posb < x + lengthA * 7; posb++)
+			{
+				// up-down
+				for (posc = groundLevel; posc < groundLevel + posd; posc++)
+				{
+					WorldData[posb + (posc * MaxX)] = 0;
+					// gravel path
+					if (posc == groundLevel)
+						WorldData[posb + (posc * MaxX)] = 84;
+					// dirt
+					if (posc > groundLevel)
+						WorldData[posb + (posc * MaxX)] = 78;
+				}
+				// houses
+				// small house (5x5)
+				// Oak planks (ID is 152)
+				if (posb >= (x + (lengthA * 7)) + (lengthB + 1) && posb <= (x + (lengthA * 7)) + (lengthB + 5)) {
+					// left wall
+					WorldData[(lengthB + 1) + ((groundLevel) * MaxX)] = 151;
+					WorldData[(lengthB + 1) + ((groundLevel - 1) * MaxX)] = 151;
+					WorldData[(lengthB + 1) + ((groundLevel - 2) * MaxX)] = 151;
+					WorldData[(lengthB + 1) + ((groundLevel - 3) * MaxX)] = 151;
+					WorldData[(lengthB + 1) + ((groundLevel - 4) * MaxX)] = 151;
+					// right wall
+					WorldData[(lengthB + 5) + ((groundLevel) * MaxX)] = 151;
+					WorldData[(lengthB + 5) + ((groundLevel - 1) * MaxX)] = 151;
+					WorldData[(lengthB + 5) + ((groundLevel - 2) * MaxX)] = 151;
+					WorldData[(lengthB + 5) + ((groundLevel - 3) * MaxX)] = 151;
+					WorldData[(lengthB + 5) + ((groundLevel - 4) * MaxX)] = 151;
+					// roof
+					WorldData[(lengthB + 2) + ((groundLevel - 4) * MaxX)] = 152;
+					WorldData[(lengthB + 3) + ((groundLevel - 4) * MaxX)] = 152;
+					WorldData[(lengthB + 4) + ((groundLevel - 4) * MaxX)] = 152;
+					// fill
+					for (testX = lengthB + 2; testX < lengthB + 5; testX++) {
+						for (testY = 0; testY < 4; testY++) {
+							WorldData[testX + ((groundLevel - testY) * MaxX)] = ((testY == 0) * 54);
+						}
+					}
+					// randomize for chest, crafting table, and/or bed
+						testX = randInt(0, 4);
+					// chest
+					if (testX == 0) {
+						WorldData[(lengthB + 4) + ((groundLevel - 1) * MaxX)] = 9;
+						// add more later for its contents
+					}
+					// crafting table
+					if (testX == 1) {
+						WorldData[(lengthB + 4) + ((groundLevel - 1) * MaxX)] = 58;
+					}
+					// bed
+					if (testX == 2) {
+						WorldData[(lengthB + 2) + ((groundLevel - 1) * MaxX)] = 7;
+						WorldData[(lengthB + 3) + ((groundLevel - 1) * MaxX)] = 8;
+						testX = randInt(0, 3);
+						// crafting table
+						if (testX == 0) {
+							WorldData[(lengthB + 4) + ((groundLevel - 1) * MaxX)] = 58;
+						}
+						// chest
+						if (testX == 1) {
+							WorldData[(lengthB + 4) + ((groundLevel - 1) * MaxX)] = 58;
+							// add more later for it's contents
+						}
+					}
+				}
+				// large house (12x5)
+
+
+				if (posb == (x + (lengthA * 7)) + lengthB + 7) lengthB += 7;
+			}
+		}
+
+		// cave generation
+		if (genCaves == 1 && randInt(0, 2) == 1 && x >= 21) {
+			for (xa = x - 20; xa < x - 20 + randInt(6, 19); xa++) {
+				for (ya = groundLevel + 10 + randInt(1, 4); ya < groundLevel + 10 + randInt(3, 6); ya++) {
+					WorldData[xa + ya * MaxX] = 0;
+				}
+			}
+		}
+
+		// water generation
+		if ((biomeVal == 3 || randInt(1, 3) == 2) && groundLevel >= 34 && worldType != 1)
+		{
+			groundLevelB = groundLevel;
+			// pos is left-to-right size
+			lengthA = randInt(6, 20);
+			for (posb = x - lengthA; posb < x; posb++)
+			{
+				// generates up to down
+				for (posc = 0; posc < groundLevel - posd + randInt(2, 5); posc++)
+				{
+					WorldData[posb + (posc * MaxX)] = 0;
+					if (posc >= groundLevel)
+						WorldData[posb + (posc * MaxX)] = 215;
+				}
+			}
+			groundLevel = groundLevelB;
+		}
+
+		// terrain
+		for (y = groundLevel; y < MaxY; y++)
+		{
+			// grass block
+			blockType = 95;
+			// dirt
+			if (y > groundLevel)
+				blockType = 78;
+			// desert
+			if (biomeVal == 1 && biomeVal != 5)
+			{
+				// sand
+				blockType = 186;
+				// sandstone
+				if (y > groundLevel + randInt(0, 4))
+					blockType = 187;
+			}
+			// stone
+			if (y > groundLevel + 4)
+				blockType = 202;
+			// ores
+			if ((y > groundLevel + 10) && (y < groundLevel + 80) && (randInt(0, 10) == 0))
+				blockType = 52;
+			if ((y > groundLevel + 18) && (y < groundLevel + 80) && (randInt(0, 10) == 0))
+				blockType = 51;
+			if ((y > groundLevel + 100) && (y < groundLevel + 130) && (randInt(0, 20) == 0))
+				blockType = 76;
+			if ((y > groundLevel + 130) && (y < groundLevel + 140) && (randInt(0, 20) == 0))
+				blockType = 83;
+			WorldData[x + (y * MaxX)] = blockType;
+		}
+		// bedrock
+		WorldData[x + ((y - 1) * MaxX)] = 15;
+
+		x++;
+	}
+	playerX = 10;
+	playerY = 0;
+	curPos = MaxX + 11;
+	curX = 11;
+	curY = 6;
+	health = 18;
+	hunger = 18;
+	damageAmount = 0;
+	damageDealt = 0;
+	while (WorldData[(playerX + ((playerY + 3) * MaxX))] == 0) {
+		playerY++;
+		curPos += MaxX;
+		WorldTimerPosY++;
+		if (WorldTimerPosY > 32) WorldTimerPosY = 0;
+	}
+	scrollX = 0;
+	scrollY = 0;
+
+	hotbar[0] = 215;
+	hotbar[5] = 32;
+
+}
+
+void Game(void)
+{
+	int16_t gravityVar = gravityPixelAmount, listPosition = 0;
+	int16_t blockAboveHead = 0, blockAtCenter = 0;
+	int16_t blockLeftCenter = 0, blockLeftBottom = 0;
+	int16_t blockRightCenter = 0, blockRightBottom = 0;
+	int16_t blockAtFeet = 0, blockBelowFeet = 0;
+	int16_t Up_Count, rtc_Up;
+	gfx_SetClipRegion(0 - 17, 0 - 17, 337, 257);
+
+	while (!(kb_IsDown(kb_KeyClear)))
+	{
 		kb_Scan();
 
-		drawDirtBackground(scroll);
-		gfx_SetTextFGColor(230);
-		gfx_PrintStringXY("DEV_ALPHA v1.0.04", 3, 230);
-		gfx_SetTextFGColor(0);
-		gfx_ScaledTransparentSprite_NoClip(logo, 32, 20, 2, 2);
-		/* buttons */
-		gfx_SetColor(181);
-		gfx_FillRectangle(60, 125, 192, 20);
-		gfx_FillRectangle(60, 150, 192, 20);
-		gfx_FillRectangle(60, 175, 192, 20);
-		gfx_FillRectangle(60, 200, 192, 20);
-		gfx_SetColor(140);
-		/* redraw only the one button that needs it */
-		gfx_SetColor(181);
-		gfx_FillRectangle(60, i, 192, 20);
-		/* button text */
-		gfx_PrintStringXY("Play", 144, 130);
-		gfx_PrintStringXY("Achievements", 116, 155);
-		gfx_PrintStringXY("Settings", 130, 180);
-		gfx_PrintStringXY("Quit", 144, 205);
-		i = y;
+		RenderEngine();
+
+		if (gameSettings[3] == 1) {
+			// debug
+			gfx_SetTextFGColor(0);
+			gfx_SetTextXY(25, 20);
+			gfx_PrintString("X:");
+			gfx_PrintInt(playerX, 1);
+			gfx_SetTextXY(98, 20);
+			gfx_PrintString("Y:");
+			gfx_PrintInt(playerY, 1);
+			gfx_SetTextXY(25, 30);
+			gfx_PrintString("FPS:");
+			gfx_PrintInt(fps, 1);
+			gfx_SetTextXY(85, 30);
+			gfx_PrintString("Block_AtCursor:");
+			gfx_PrintInt(WorldData[curPos], 1);
+		}
+
+		// cursor
+		if (timeofday <= 2) gfx_SetColor(0);
+		if (timeofday > 2 || WorldData[curPos] != 0) gfx_SetColor(148);
+		gfx_Rectangle(scrollX + (curX * 16), scrollY + (curY * 16), 16, 16);
+
+		// add health, hunger, and exp bars for survival and adventure modes
+		if (gamemode == 0 || gamemode == 2) {
+			gfx_SetTransparentColor(148);
+			y = 0;
+			for (x = 4; x < 9 * 8; x += 8) {
+				if (y > health) {
+				gfx_TransparentSprite(heart_empty, x, 4);
+				}else{
+					if (y <= health)
+					gfx_TransparentSprite(heart_full, x, 4);
+					if (!(y % 2) && y == health)
+					gfx_TransparentSprite(heart_half, x, 4);
+				}
+				y += 2;
+			}
+			gfx_SetTransparentColor(7);
+		}
+
+		if (health <= 0) deathScreen();
+
+		// dialog/pop up text
+		if (dialog != 0)
+		{
+			gfx_SetColor(181);
+			gfx_FillRectangle(2, 2, 316, 14);
+			gfx_SetTextFGColor(0);
+			gfx_PrintStringXY(dialogString, 6, 6);
+		}
+
+
+		blockAboveHead =  WorldData[playerX + (playerY * MaxX)];
+		blockLeftCenter =  WorldData[playerX - 1 + ((playerY + 1) * MaxX)];
+		blockLeftBottom =  WorldData[playerX - 1 + ((playerY + 2) * MaxX)];
+		blockRightCenter =  WorldData[playerX + 1 + ((playerY + 1) * MaxX)];
+		blockRightBottom =  WorldData[playerX + 1 + ((playerY + 2) * MaxX)];
+		blockAtCenter = WorldData[playerX + ((playerY + 1) * MaxX)]; 
+		blockAtFeet =  WorldData[playerX + ((playerY + 2) * MaxX)];
+		blockBelowFeet =  WorldData[playerX + ((playerY + 3) * MaxX)];
+
+		if (kb_IsDown(kb_KeyStat) || kb_IsDown(kb_KeyAlpha) || kb_IsDown(kb_KeyApps) || kb_IsDown(kb_KeyMode)) {
+			delay(100);
+			curPos += (kb_IsDown(kb_KeyStat) && curX < 20) - (kb_IsDown(kb_KeyAlpha) && curX > 1);
+			curX += (kb_IsDown(kb_KeyStat) && curX < 20) - (kb_IsDown(kb_KeyAlpha) && (curX > 1));
+			curPos += ((kb_IsDown(kb_KeyApps) && curY < 15) * MaxX) - ((kb_IsDown(kb_KeyMode) && curY > 1) * MaxX);
+			curY += (kb_IsDown(kb_KeyApps) && curY < 15) - (kb_IsDown(kb_KeyMode) && curY > 1);
+		}
+
+		if (kb_IsDown(kb_KeyGraphVar)) {
+			if (gamemode == 0 || gamemode == 2) survivalInventory();
+			if (gamemode == 1) creativeInventory();
+		}else{
+			// revamped hotbar
+			// (update: Disappears when entering the inventory, becuase this was visible even when overlayed)
+			gfx_SetColor(149);
+			gfx_SetTextFGColor(254);
+			gfx_Rectangle(116, 218, 5 * 18 + 2, 20);
+			for (x = 0; x < 5; x++) {
+				gfx_SetColor(149);
+				if (x == hotbarSel) gfx_SetColor(74);
+				gfx_Rectangle(117 + (x * 18), 219, 18, 18);
+				gfx_Rectangle(118 + (x * 18), 220, 17, 17);
+				if (hotbar[x] != 0) {
+					if (hotbar[x] <= MaxSprites[0])
+						gfx_TransparentSprite(BlockTextures[hotbar[x] - 1], 119 + (x * 18), 221);
+					// check if it's foliage
+					if (hotbar[x] > MaxSprites[0] && hotbar[x] <= MaxSprites[0] + MaxSprites[3])
+						gfx_TransparentSprite(FoliageTextures[hotbar[x] - 1 - MaxSprites[0]], 119 + (x * 18), 221);
+					// check if it's plants
+					if (hotbar[x] > MaxSprites[0] + MaxSprites[3] && hotbar[x] <= MaxSprites[0] + MaxSprites[3] + MaxSprites[2])
+						gfx_TransparentSprite(PlantTextures[hotbar[x] - 1 - (MaxSprites[0] + MaxSprites[3])], 119 + (x * 18), 221);
+				}
+			}
+			if (gamemode == 0 || gamemode == 2) {
+				for (x = 0; x < 5; x++) {
+					gfx_SetTextXY(117 + (x * 18) + 10, 231);
+					if (hotbar[x] != 0) gfx_PrintInt(hotbar[x + 5], 1);
+				}
+			}
+		}
+
+		if (kb_IsDown(kb_KeyYequ)) hotbarSel = 0;
+		if (kb_IsDown(kb_KeyWindow)) hotbarSel = 1;
+		if (kb_IsDown(kb_KeyZoom)) hotbarSel = 2;
+		if (kb_IsDown(kb_KeyTrace)) hotbarSel = 3;
+		if (kb_IsDown(kb_KeyGraph)) hotbarSel = 4;
+
+
+		if (dialog != 0) {
+			dialogTimer--;
+			if (dialogTimer == 0) dialog = 0;
+		}
+
+		// gives max count (64) to selected block/item in hotbar if in creative mode
+		if (gamemode == 1 && hotbar[hotbarSel] != 0) hotbar[hotbarSel + 5] = 64;
+
+		if (kb_IsDown(kb_Key2nd) && hotbar[hotbarSel] != 0 && hotbar[hotbarSel + 5] > 0)
+		{
+			if (WorldData[curPos] == 0 || WorldData[curPos] == 233 || WorldData[curPos] >= WATERENTITY) {
+				WorldData[curPos] = hotbar[hotbarSel];
+				hotbar[hotbarSel + 5]--;
+				if (hotbar[hotbarSel + 5] < 1) hotbar[hotbarSel] = 0;
+			}
+		}
+		if (kb_IsDown(kb_KeyDel) && WorldData[curPos] != 0) {
+			WorldData[curPos] = 0;
+			// add code here for survival and adventure (block breaks)
+			giveItem(WorldData[curPos], 1);
+		}
+
+		if (kb_IsDown(kb_KeyMath))
+		{
+			input(dialogString, 40);
+			dialogTimer = 100;
+			dialog = 1;
+			// 0 = survival, 1 = creative, 2 = adventure
+		}
+		// allows movement in a 1-block wide area
+		if (kb_IsDown(kb_KeyLeft) && playerX > 0 && (blockLeftCenter != 0) && scrollX < 0) scrollX += pixelAmount;
+		if (kb_IsDown(kb_KeyRight) && playerX < MaxX && (blockRightCenter != 0) && scrollX > -16 + 6) scrollX -= pixelAmount;
+		// standard left/right movement
+		if (kb_IsDown(kb_KeyLeft) && playerX > 0 && (blockLeftCenter == 0 || blockLeftCenter > MaxSprites[0])) scrollX += pixelAmount;
+		if (kb_IsDown(kb_KeyRight) && playerX < MaxX && (blockRightCenter == 0 || blockRightCenter > MaxSprites[0])) scrollX -= pixelAmount;
+		if (flymode == 1) {
+			if (kb_IsDown(kb_KeyUp) && playerY > 5 && blockAboveHead == 0) scrollY += pixelAmount;
+			if (kb_IsDown(kb_KeyDown) && playerY < MaxY && blockBelowFeet == 0) scrollY -= pixelAmount;
+			// try fixing the scrollY var glitch when you jump and noclip into a block
+			if (scrollY < 0 && jump == 1 && flymode == 0 && (WorldData[(playerX + ((playerY + 1) * MaxX))] != 0 || WorldData[(playerX + ((playerY + 2) * MaxX))] != 0))
+			{
+				scrollY = 0;
+				curY--;
+				curPos -= MaxX;
+				jump = 0;
+			}
+		}else{
+			// auto jumps on a block
+			if ((playerY > 0) && (jump == 0) && (blockAtFeet > 0) && (blockAtFeet - 2 < MaxSprites[0] + 4) && (blockAtFeet != 233) && (blockAtFeet != WATERENTITY))
+			{
+				curPos -= MaxX;
+				scrollY = 0;
+				playerY--;
+				WorldTimerPosY--;
+				// need to overwrite this variable so gravity isn't buggy after auto-jumping
+				blockBelowFeet = 1;
+			}
+			if (kb_IsDown(kb_KeyUp) && playerY > 5 && blockAboveHead == 0 && jump == 0) {
+				jump = 1;
+				scrollY += 16;
+				curY++;
+				playerY--;
+				WorldTimerPosY--;
+			}else{
+				if ((blockBelowFeet == 0 || blockAtFeet >= WATERENTITY) && jump != 1) {
+					scrollY -= pixelAmount;
+					if (scrollY <= -16) {
+						playerY++;
+						WorldTimerPosY++;
+						curPos += MaxX;
+						scrollY = 0;
+						jump = 0;
+					}
+				}
+				if (jump == 1) {
+					scrollY -= pixelAmount;
+					if (scrollY <= -16) {
+						playerY++;
+						curY--;
+						WorldTimerPosY++;
+						scrollY = -16;
+						jump = 0;
+					}
+				}
+			}
+		}
+		playerX += (scrollX < -16) - (scrollX > 0);
+		playerY += (scrollY < -16) - (scrollY > 0);
+		WorldTimerPosX += (scrollX < -16) - (scrollX > 0);
+		WorldTimerPosY += (scrollY < -16) - (scrollY > 0);
+		if (scrollX > 0) {
+			curPos--;
+			//scrollX = -16 + (pixelAmount - -scrollX);
+			scrollX -= 16;
+			WorldTimerPosX--;
+		}
+		if (scrollX < -16) {
+			curPos++;
+			//scrollX = (scrollX + pixelAmount) + 16;
+			scrollX += 16;
+			WorldTimerPosX++;
+		}
+		if (scrollY > 0) {
+			curPos -= MaxX;
+			//scrollY = -16 + (pixelAmount - -scrollY);
+			scrollY -= 15;
+			WorldTimerPosY--;
+		}
+		if (scrollY < -16) {
+			curPos += MaxX;
+			//scrollY = (scrollY + pixelAmount) + 16;
+			scrollY += 16;
+			WorldTimerPosY++;
+		}
+
+
+		if (gamemode != 0 && gamemode != 2) {
+			// double up to toggle fly mode
+			if (kb_IsDown(kb_KeyUp)) {
+				if (Up_Count == 1 && rtc_Up + 1 == rtc_Seconds) {
+					rtc_Up = rtc_Seconds;
+					timer = 0;
+					dialogTimer = 50;
+					dialog = 1;
+					flymode = (flymode == 0);
+					strcpy(dialogString, "Fly Mode toggled Off");
+					if (flymode == 1)
+						strcpy(dialogString, "Fly Mode toggled On");
+				}
+				Up_Count = (Up_Count == 0);
+				if (Up_Count == 0) rtc_Up = rtc_Seconds;
+			}
+			// turn off fly mode if you touch the ground
+			if (kb_IsDown(kb_KeyDown) && flymode == 1 && playerY < MaxY - 15 && WorldData[(playerX + ((playerY + 3) * MaxX))] != 0 && WorldData[(playerX + ((playerY + 3) * MaxX))] != 233 && WorldData[(playerX + ((playerY + 3) * MaxX))] != WATERENTITY)
+				flymode = 0;
+		}
+
+		gfx_BlitBuffer();
+	}
+	kb_Scan();
+	pauseMenu();
+}
+
+void RenderEngine(void)
+{
+	int16_t blockVal = 0, blockValLeft = 0, blockValRight = 0, blockValTop = 0, blockValBottom = 0;
+	int16_t testX, testY, timerX, timerY;
+	int16_t counter = 0, second_Last = rtc_Seconds;
+	// draw sky
+	// try gfx_Darken(colorValue) as time var increments
+	// so maybe day/night transitioning would appear smoother
+	// speedup by filling screen red and overwriting if no damage was dealt
+	gfx_FillScreen(224);
+	if (health >= 0)
+	gfx_FillScreen(dayColors[timeofday]);
+	damageDealt = 0;
+	dayTimer++;
+	if (dayTimer >= 500)
+	{
+		timeofday++;
+		dayTimer = 0;
+	}
+	if (timeofday > 4)
+		timeofday = 0;
+
+	testX = playerX - 10;
+	testY = playerY - 5;
+	if (WorldTimerPosX > 32) WorldTimerPosX = 0;
+	if (WorldTimerPosY > 32) WorldTimerPosY = 0;
+	timerX = WorldTimerPosX;
+	timerY = WorldTimerPosY;
+	drawX = scrollX;
+	drawY = scrollY;
+	for (render = 0; render < 21 * 16; render++)
+	{
 		gfx_SetColor(0);
-		gfx_Rectangle(60, y, 192, 20);
-		gfx_Rectangle(61, y + 1, 190, 18);
+		pos = testX + testY * MaxX;
+		// draw the shadowing box (not for water, lava, etc.)
+		blockVal = WorldData[pos];
+		blockValLeft = WorldData[pos - 1];
+		blockValRight = WorldData[pos + 1];
+		blockValTop = WorldData[pos - MaxX];
+		blockValBottom = WorldData[pos + MaxX];
+		// overrides shadowing for lava, water, and any values above or equal to what WATERENTITY is defined as.
+		if (blockVal == 232 || blockVal == 233 || blockVal >= WATERENTITY)
+			blockValTop = 0;
+		if ((blockVal != 0) && testX >= 0 && testX <= MaxX - 10 && ((shadowing == 0) || (shadowing != 0 && ((blockValLeft == 0 || blockValRight == 0 || blockValTop == 0 || blockValBottom == 0) || (blockValLeft > MaxSprites[0] || blockValRight > MaxSprites[0] || blockValTop > MaxSprites[0] || blockValBottom > MaxSprites[0])))))
+		{
+			// check if it's a block
+			if (blockVal <= MaxSprites[0])			// WorldData[pos] - 1
+				gfx_TransparentSprite(BlockTextures[blockVal - 1], drawX, drawY);
+			// check if it's foliage
+			if (blockVal >= MaxSprites[0] && blockVal <= MaxSprites[0] + MaxSprites[3])
+				gfx_TransparentSprite(FoliageTextures[blockVal - 1 - MaxSprites[0]], drawX, drawY);
+			// check if it's plants
+			if (blockVal >= MaxSprites[0] + MaxSprites[3] && blockVal <= MaxSprites[0] + MaxSprites[3] + MaxSprites[2])
+				gfx_TransparentSprite(PlantTextures[blockVal - 1 - (MaxSprites[0] + MaxSprites[3])], drawX, drawY);
+			// load water sprite if neccessary
+			if (blockVal >= WATERENTITY && blockVal <= WATERENTITY + 7)
+				gfx_TransparentSprite(BlockTextures[214], drawX, drawY);
+			gfx_SetColor(dayColors[timeofday]);
+			if (blockVal >= WATERENTITY && blockVal <= WATERENTITY + 7)
+				gfx_FillRectangle(drawX, drawY, 16, (blockVal - WATERENTITY) * 2);
+		}
+		gfx_SetColor(0);
+		Behaviors(pos, timerX + timerY * 32);
+		WorldDataTimer[timerX + timerY * 32] -= WorldDataTimer[timerX + timerY * 32] > 0;
+		// shading
+		BlockLightVals[timerX + timerY * 32] = 0;
+		if (BlockLightVals[timerX + timerY * 32] == 0 && blockVal != 0 && blockVal <= MaxSprites[0] && (blockValLeft != 0 && blockValRight != 0 && blockValTop != 0 && blockValBottom != 0))
+			BlockLightVals[timerX + timerY * 32] = lightVal;
+		/*if (BlockLightVals[timerX + timerY * 32] > 0 && blockVal != 0 && blockVal <= MaxSprites[0]) {
+			if (blockValTop != 0 && BlockLightVals[timerX + timerY * 32] < BlockLightVals[timerX + ((timerY - 1) * 32)]) 
+				BlockLightVals[timerX + timerY * 32]--;
+		}*/
+
+		if (BlockLightVals[timerX + timerY * 32] > 0)
+		gfx_FillRectangle(drawX, drawY, 16, BlockLightVals[timerX + timerY * 32]);
+		// fps counter
+		counter++;
+		if (rtc_Seconds >= second_Last) {
+			second_Last = rtc_Seconds;
+			fps = counter; // + (pixelAmount - shadowing)
+			counter = 0;
+		}
+
+		drawX += 16;
+		testX++;
+		timerX++;
+		if (timerX > 32) timerX = 0;
+		if (testX == playerX + 11) {
+			testY++;
+			timerY++;
+			if (timerY > 32) timerY = 0;
+			testX = playerX - 10;
+			timerX = WorldTimerPosX;
+			drawX = scrollX;
+			drawY += 16;
+		}
+	}
+
+	// player
+	gfx_TransparentSprite(Head_1, 16 * 9 + 9 + 8, 16 * 5 + 15);
+	gfx_TransparentSprite(Body_1, 16 * 9 + 11 + 8, 16 * 5 + 23);
+	gfx_TransparentSprite(Leg_1, 16 * 9 + 11 + 8, 16 * 5 + 35);
+}
+
+void deathScreen(void)
+{
+	int16_t y;
+	// death screen
+	for (y = 100; y < 140; y += 20) {
+		gfx_SetColor(148);
+		gfx_FillRectangle(40, y, 240, 15);
+		gfx_SetColor(74);
+		gfx_Rectangle(40, y, 240, 15);
+		gfx_Rectangle(41, y + 1, 238, 13);
+	}
+	y = 100;
+	while (!(kb_IsDown(kb_KeyClear))) {
+		kb_Scan();
+		DrawCenteredText(MenuElements[19], 169, 105);
+		DrawCenteredText(MenuElements[18], 160, 125);
+		gfx_SetColor(254);
+		if ((kb_IsDown(kb_KeyUp) && y != 100) && (kb_IsDown(kb_KeyDown) && y != 120))
+			gfx_SetColor(74);
+		gfx_Rectangle(40, y, 240, 15);
+		gfx_Rectangle(41, y + 1, 238, 13);
+		if (kb_IsDown(kb_KeyUp)) y = 100;
+		if (kb_IsDown(kb_KeyDown)) y = 120;
+		gfx_BlitBuffer();
+	}
+}
+
+void Behaviors(int16_t position, int16_t timerPos)
+{
+
+	// grass turns to dirt
+
+	// remove flowing down water when source was removed
+	if (WorldData[position] == WATERENTITY && WorldData[position - MaxX] != 215 && WorldData[position - MaxX] < WATERENTITY && WorldDataTimer[timerPos - MaxX] < 1) {
+		WorldData[position] = 0;
+		WorldDataTimer[timerPos] = 3;
+	}
+	if (WorldData[position] >= WATERENTITY && WorldData[position - MaxX] == 0 && WorldData[position - 1] == 0 && WorldData[position + 1] == 0 && WorldDataTimer[timerPos - MaxX] < 1) {
+		WorldData[position] = 0;
+		WorldDataTimer[timerPos] = 3;
+	}
+	// water flows sideways
+	if (WorldData[position + MaxX] != 0 && WorldData[position + MaxX] < WATERENTITY && WorldDataTimer[timerPos] < 1) {
+		if (WorldData[position] == WATERENTITY + 7 && WorldData[position - 1] < WATERENTITY && WorldData[position + 1] < WATERENTITY)
+			WorldData[position] = 0;
+		if ((WorldData[position - 1] == 0 || WorldData[position - 1] == WATERENTITY || WorldData[position - 1] >= MaxSprites[0] + MaxSprites[3] + 1) && WorldDataTimer[timerPos] < 1 && WorldData[position] >= WATERENTITY && WorldData[position] < WATERENTITY + 7 && WorldData[position - 1] + 2 <= WorldData[position]) {
+			if (WorldData[position - 1] >= MaxSprites[0] + MaxSprites[3] + 1)
+				giveItem(WorldData[position - 1], 0);
+			WorldData[position - 1] = WorldData[position] + 1;
+			WorldDataTimer[timerPos - 1] = 3;
+		}
+		if ((WorldData[position + 1] == 0 || WorldData[position + 1] == WATERENTITY || WorldData[position + 1] >= MaxSprites[0] + MaxSprites[3] + 1) && WorldDataTimer[timerPos] < 1 && WorldData[position] >= WATERENTITY && WorldData[position] < WATERENTITY + 7 && WorldData[position + 1] + 2 <= WorldData[position]) {
+			if (WorldData[position - 1] >= MaxSprites[0] + MaxSprites[3] + 1)
+				giveItem(WorldData[position + 1], 0);
+			WorldData[position + 1] = WorldData[position] + 1;
+			WorldDataTimer[timerPos + 1] = 3;
+		}
+	}
+	// removal of water (flowing sideways)
+	if (WorldData[position] > WATERENTITY && WorldData[position] < WATERENTITY + 7 && WorldData[position] > WorldData[position - 1] + 1 && WorldData[position] > WorldData[position - MaxX] && WorldData[position] < WorldData[position + 1] + 1)
+		WorldData[position]++;
+	if (WorldData[position] > WATERENTITY && WorldData[position] < WATERENTITY + 7 && WorldData[position] < WorldData[position - 1] + 1 && WorldData[position] > WorldData[position - MaxX] && WorldData[position] > WorldData[position + 1] + 1)
+		WorldData[position]++;
+	if (WorldData[position] > WATERENTITY && WorldData[position] < WATERENTITY + 7 && WorldData[position - 1] >= WorldData[position] && WorldData[position + 1] >= WorldData[position])
+		WorldData[position]++;
+	if (WorldData[position] == WATERENTITY + 7 && (WorldData[position - 1] == 0 || WorldData[position - 1] == WorldData[position]) && (WorldData[position + 1] == 0 || WorldData[position - 1] == WorldData[position]) && WorldData[position - MaxX] < WorldData[position]) {
+		WorldData[position] = 0;
+		WorldDataTimer[timerPos] = 3;
+	}
+	// water flows downward
+	if ((WorldData[position] == 215 || (WorldData[position] >= WATERENTITY && WorldData[position] <= WATERENTITY + 7)) && (WorldData[position + MaxX] == 0 || WorldData[position + MaxX] >= MaxSprites[0] + MaxSprites[3] + 1) && WorldDataTimer[timerPos] < 1) {
+		if (WorldData[position + MaxX] >= MaxSprites[0] + MaxSprites[3] + 1 && WorldData[position] < WATERENTITY)
+			giveItem(WorldData[position], 0);
+		if (WorldData[position + MaxX] != WATERENTITY && WorldData[position + MaxX] != LAVAENTITY) {
+			WorldData[position + MaxX] = WATERENTITY;
+			WorldDataTimer[timerPos + 80] = 3;
+		}
+	}
+
+}
+
+void survivalInventory(void) {
+	int16_t xpos = 80, ypos = 140, num = 0, pos = 0;
+	while (!(kb_IsDown(kb_KeyClear)))
+	{
+		kb_Scan();
+		gfx_SetColor(148);
+		gfx_FillRectangle(40, 60, 240, 162);
+		// main inventory slots
+		pos = 0;
+		for (y = 140; y < 140 + (3 * 18); y += 18) {
+			for (x = 80; x < 80 + (9 * 18); x += 18) {
+				gfx_SetColor(0);
+				gfx_Rectangle(x, y, 18, 18);
+				if (Inventory[pos] > 0) {
+				if (Inventory[pos] <= MaxSprites[0])
+						gfx_TransparentSprite(BlockTextures[Inventory[pos] - 1], x + 1, y + 1);
+					if (Inventory[pos] > MaxSprites[0] && Inventory[pos] <= MaxSprites[1])
+						gfx_TransparentSprite(ItemTextures[Inventory[pos] - 1], x + 1, y + 1);
+					if (Inventory[pos] > MaxSprites[1] && Inventory[pos] <= MaxSprites[2])
+						gfx_TransparentSprite(PlantTextures[Inventory[pos] - 1], x + 1, y + 1);
+					if (Inventory[pos] > MaxSprites[2] && Inventory[pos] <= MaxSprites[3])
+						gfx_TransparentSprite(FoliageTextures[Inventory[pos] - 1], x + 1, y + 1);
+					gfx_SetTextFGColor(254);
+				}else{
+					gfx_SetColor(74);
+					gfx_FillRectangle(x + 1, y + 1, 16, 16);
+				}
+				pos++;
+			}
+		}
+		pos = 0;
+		for (y = 140; y < 140 + (3 * 18); y += 18) {
+			for (x = 80; x < 80 + (9 * 18); x += 18) {
+				if (Inventory[pos] > 0) {
+					gfx_SetTextXY(x + 10, y + 12);
+					gfx_PrintInt(Inventory[pos + 27], 1);
+				}
+				pos++;
+			}
+		}
+		// hotbar
+		for (x = 0; x < 5; x++) {
+			if (x == hotbarSel) {
+				gfx_SetColor(5);
+			}else{
+				gfx_SetColor(0);
+			}
+			gfx_Rectangle(117 + (x * 18), 200, 18, 18);
+
+			if (hotbar[x] != 0) {
+				if (hotbar[x] <= MaxSprites[0])
+					gfx_TransparentSprite(BlockTextures[hotbar[x] - 1], 118 + (x * 18), 201);
+				// check if it's foliage
+				if (hotbar[x] > MaxSprites[0] && hotbar[x] <= MaxSprites[0] + MaxSprites[3])
+					gfx_TransparentSprite(FoliageTextures[hotbar[x] - 1 - MaxSprites[0]], 118 + (x * 18), 201);
+				// check if it's plants
+				if (hotbar[x] > MaxSprites[0] + MaxSprites[3] && hotbar[x] <= MaxSprites[0] + MaxSprites[3] + MaxSprites[2])
+					gfx_TransparentSprite(PlantTextures[hotbar[x] - 1 - (MaxSprites[0] + MaxSprites[3])], 118 + (x * 18), 201);
+			}else{
+				gfx_SetColor(181);
+				gfx_FillRectangle(118 + (x * 18), 201, 16, 16);
+			}
+		}
 		gfx_BlitBuffer();
 
-		scroll--;
-		if (scroll < 1)
-			scroll = 16;
+	}
+	delay(200);
+	kb_Scan();
+	Game();
+}
 
-		if (kb_IsDown(kb_KeyUp) && y > 125)
-		{
-			//delay(150);
-			redraw = 1;
-			y -= 25;
-		}
-		if (kb_IsDown(kb_KeyDown) && y < 200)
-		{
-			//delay(150);
-			redraw = 1;
-			y += 25;
-		}
-		if (kb_IsDown(kb_KeyClear))
-		{
-			gfx_End();
-			return;
+int craftingCheck(int16_t inputVal) {
+	int16_t item = 0;
+
+	return item;
+}
+
+void giveItem(int16_t blockID, int16_t breaking) {
+	int16_t pos, movetoinventory = 0;
+
+	if (breaking == 1) {
+		// add code for breaking blocks based on their ID.
+	}
+
+	// first scan hotbar for the blockID
+	for (pos = 0; pos < 5; pos++) {
+		if (hotbar[pos] == 0) {
+			hotbar[pos] = blockID;
+			hotbar[pos + 5]++;
+			break;
+		}else{
+			if (hotbar[pos] == blockID && hotbar[pos + 5] < 64) {
+				hotbar[pos + 5]++;
+				break;
+			}
+			if (hotbar[pos] == blockID && hotbar[pos + 5] == 64) {
+				movetoinventory = 1;
+				break;
+			}
 		}
 	}
 
-	gfx_SetTransparentColor(252);
+	if (movetoinventory == 1) {
+		// the hotbar is full, so find an empty space to put the item
+		for (pos = 0; pos < 26; pos++) {
+			if (Inventory[pos] == 0) {
+				Inventory[pos] = blockID;
+				Inventory[pos + 27]++;
+				movetoinventory = 2;
+				break;
+			}else{
+				if (Inventory[pos] == blockID && Inventory[pos + 27] < 64) {
+					Inventory[pos + 27]++;
+					movetoinventory = 2;
+					break;
+				}
+			}
+		}
+	}
 
-	if (y == 125)
+	// Check if movetoinventory is still 1.
+	// If so, there's not enough room anywhere in player storage for the item
+
+}
+
+void creativeInventory(void)
+{
+	int16_t xpos = 28, ypos = 25, num, spritenum, tab = 0, pos = 0, hotbarpos = 0, lastPos;
+	int16_t scroll = 0, oldBlock = 0, newBlock = 0, InvCurPos = 0, lastXpos = 0, selectedFromTab = 0;
+	int16_t newBlockCount = 0, oldBlockCount = 0;
+	char *tabNames[5] = { "Building Blocks", "Items", "Plants", "Foliage", "Player" };
+	while (!(kb_IsDown(kb_KeyClear)))
 	{
-		playMenu();
-		y = 125;
-		delay(100);
-		MainMenu();
+		kb_Scan();
+		num = 0;
+		gfx_SetColor(148);
+		gfx_FillRectangle(15, 5, 290, 230);
+		// scroll bar rectangle
+		gfx_SetColor(74);
+		gfx_FillRectangle(28 + (14 * 18), 24, 7, 182);
+		// scroll bar level indicator
+		gfx_SetColor(181);
+		gfx_FillRectangle(29 + (14 * 18), 25 + (scroll * (180 / 9)), 5, 180 / 9);
+		// tab names
+		if (tab == 0) gfx_TransparentSprite(BlockTextures[101], 30, 8);
+		if (tab == 1) gfx_TransparentSprite(ItemTextures[0], 30, 8);
+		if (tab == 2) gfx_TransparentSprite(PlantTextures[0], 30, 8);
+		if (tab == 3) gfx_TransparentSprite(FoliageTextures[0], 30, 8);
+		if (tab == 4) gfx_TransparentSprite(BlockTextures[10], 30, 8);
+		gfx_SetColor(181);
+		gfx_FillRectangle(48, 8, 14 * 18 - 20, 10);
+		gfx_SetTextFGColor(0);
+		gfx_PrintStringXY(tabNames[tab], 50, 9);
+		for (y = 25; y < 25 + (10 * 18); y += 18) {
+			for (x = 28; x < 28 + (14 * 18); x += 18) {
+				gfx_SetColor(0);
+				gfx_Rectangle(x, y, 18, 18);
+				gfx_SetColor(74);
+				spritenum = scroll * 14 + num;
+				if (tab == 0 && spritenum <= MaxSprites[0])
+					gfx_TransparentSprite(BlockTextures[spritenum], x + 1, y + 1);
+				if (tab == 1 && spritenum <= MaxSprites[1])
+					gfx_TransparentSprite(ItemTextures[spritenum], x + 1, y + 1);
+				if (tab == 2 && spritenum <= MaxSprites[2])
+					gfx_TransparentSprite(PlantTextures[spritenum], x + 1, y + 1);
+				if (tab == 3 && spritenum <= MaxSprites[3])
+					gfx_TransparentSprite(FoliageTextures[spritenum], x + 1, y + 1);
+				if (spritenum >= MaxSprites[tab])
+					gfx_FillRectangle(x + 1, y + 1, 16, 16);
+				num++;
+			}
+		}
+		// hotbar
+		for (x = 0; x < 5; x++) {
+			gfx_SetColor(0);
+			if (x == hotbarSel)
+			gfx_SetColor(5);
+			gfx_Rectangle(117 + (x * 18), 210, 18, 18);
+			if (hotbar[x] != 0) {
+				if (hotbar[x] <= MaxSprites[0])
+					gfx_TransparentSprite(BlockTextures[hotbar[x] - 1], 118 + (x * 18), 211);
+				// check if it's foliage
+				if (hotbar[x] > MaxSprites[0] && hotbar[x] <= MaxSprites[0] + MaxSprites[3])
+					gfx_TransparentSprite(FoliageTextures[hotbar[x] - 1 - MaxSprites[0]], 118 + (x * 18), 211);
+				// check if it's plants
+				if (hotbar[x] > MaxSprites[0] + MaxSprites[3] && hotbar[x] <= MaxSprites[0] + MaxSprites[3] + MaxSprites[2])
+					gfx_TransparentSprite(PlantTextures[hotbar[x] - 1 - (MaxSprites[0] + MaxSprites[3])], 118 + (x * 18), 211);
+			}else{
+				gfx_SetColor(181);
+				gfx_FillRectangle(118 + (x * 18), 211, 16, 16);
+			}
+		}
+		// draw a item if it was selected
+		if (newBlock != 0)
+		{
+			if (selectedFromTab == 0 && newBlock <= MaxSprites[0])
+				gfx_TransparentSprite(BlockTextures[newBlock - 1], xpos + 5, ypos + 5);
+			if (selectedFromTab == 1 && newBlock <= MaxSprites[1])
+				gfx_TransparentSprite(ItemTextures[newBlock - 1], xpos + 5, ypos + 5);
+			if (selectedFromTab == 2 && newBlock <= MaxSprites[2])
+				gfx_TransparentSprite(PlantTextures[newBlock - 1], xpos + 5, ypos + 5);
+			if (selectedFromTab == 3 && newBlock <= MaxSprites[3])
+				gfx_TransparentSprite(FoliageTextures[newBlock - 1], xpos + 5, ypos + 5);
+		}
+		// cursor (shaped like a + )
+		gfx_SetColor(255);
+		gfx_FillRectangle(xpos + 2, ypos + 8, 14, 2);
+		gfx_FillRectangle(xpos + 8, ypos + 2, 2, 14);
+
+
+		gfx_SetTextFGColor(0);
+		gfx_SetTextXY(12, 12);
+		gfx_PrintInt(pos + 1, 1);
+
+
+		gfx_SetTextFGColor(254);
+		gfx_SetTextXY(xpos + 14, ypos + 14);
+		if (newBlockCount > 1) gfx_PrintInt(newBlockCount, 1);
+		gfx_BlitBuffer();
+
+		// move cursor down to hotbar if the cursor is at the bottom, and back up
+		if (ypos == 25 + (9 * 18) && kb_IsDown(kb_KeyDown) && scroll == 8)
+		{
+			InvCurPos = 1;
+			lastXpos = xpos;
+			lastPos = pos;
+			hotbarpos = 0;
+			xpos = 117;
+			ypos = 210;
+		}
+		if (ypos == 210 && kb_IsDown(kb_KeyUp) && InvCurPos == 1)
+		{
+			InvCurPos = 0;
+			xpos = lastXpos;
+			pos = lastPos + 14;
+			ypos = 25 + (10 * 18);
+		}
+		// clears the selected block if user clicks an empty space in the inventory
+		if (kb_IsDown(kb_Key2nd) && (pos >= MaxSprites[tab] || (newBlock != pos + 1 && newBlock != 0)) && ypos != 210)
+		{
+			newBlock = 0;
+			newBlockCount = 0;
+		}else{
+			// select an item if the user presses 2nd in the inventory (not hotbar)
+			if (kb_IsDown(kb_Key2nd) && pos < MaxSprites[tab] && newBlockCount < 64 && ypos != 210)
+			{
+				selectedFromTab = tab;
+				if (newBlock == pos + 1) {
+					newBlockCount++;
+				}else{
+					newBlockCount = 1;
+					newBlock = pos + 1;
+				}
+			}
+		}
+		// select/swap an item if the user presses 2nd in the hotbar only
+		if (kb_IsDown(kb_Key2nd) && ypos == 210)
+		{
+			oldBlock = hotbar[hotbarpos];
+			if (newBlock == 0)
+			{
+				// check if it's blocks
+				if (hotbar[hotbarpos] <= MaxSprites[0])
+					selectedFromTab = 0;
+				// check if it's items
+				if (hotbar[hotbarpos] > MaxSprites[0] && hotbar[hotbarpos] <= MaxSprites[0] + MaxSprites[1])
+					selectedFromTab = 1;
+				// check if it's foliage
+				if (hotbar[hotbarpos] > MaxSprites[0] + MaxSprites[1] && hotbar[hotbarpos] <= MaxSprites[0] + MaxSprites[1] + MaxSprites[2])
+					selectedFromTab = 2;
+				// check if it's plants
+				if (hotbar[hotbarpos] > MaxSprites[0] + MaxSprites[1] + MaxSprites[2] && hotbar[hotbarpos] <= MaxSprites[0] + MaxSprites[1] + MaxSprites[2] + MaxSprites[3])
+					selectedFromTab = 3;
+			}else{
+				hotbar[hotbarpos] = newBlock;
+			}
+			newBlock = oldBlock;
+		}
+		// tabs
+		if (kb_IsDown(kb_KeyYequ) || kb_IsDown(kb_KeyWindow) || kb_IsDown(kb_KeyZoom) || kb_IsDown(kb_KeyTrace) || kb_IsDown(kb_KeyGraph)) {
+			if (kb_IsDown(kb_KeyYequ)) tab = 0;
+			if (kb_IsDown(kb_KeyWindow)) tab = 1;
+			if (kb_IsDown(kb_KeyZoom)) tab = 2;
+			if (kb_IsDown(kb_KeyTrace)) tab = 3;
+			if (kb_IsDown(kb_KeyGraph)) tab = 4;
+			scroll = 0;
+			pos = 0;
+			xpos = 28;
+			ypos = 25;
+		}
+		// scroll bar movement
+		if (ypos == 25 + (9 * 18) && kb_IsDown(kb_KeyDown) && scroll < 8)
+		{
+			scroll++;
+			pos += 14;
+		}
+		if (ypos == 25 && kb_IsDown(kb_KeyUp) && scroll > 0)
+		{
+			scroll--;
+			pos -= 14;
+		}
+		// move cursor left and right if cursor is at the hotbar
+		xpos += 18 * (kb_IsDown(kb_KeyRight) && xpos < 117 + (4 * 18)) * (ypos == 210) - 18 * (kb_IsDown(kb_KeyLeft) && xpos > 117) * (ypos == 210);
+		hotbarpos += (kb_IsDown(kb_KeyRight) && hotbarpos < 5) * (ypos == 210) - (kb_IsDown(kb_KeyLeft) && hotbarpos > 0) * (ypos == 210);
+		// cursor movement
+		pos += (kb_IsDown(kb_KeyRight) && xpos < 28 + (13 * 18)) * (ypos != 210) - (kb_IsDown(kb_KeyLeft) && xpos > 28) * (ypos != 210);
+		pos += 14 * (kb_IsDown(kb_KeyDown) && ypos < 25 + (9 * 18)) * (ypos != 210) - 14 * (kb_IsDown(kb_KeyUp) && ypos > 25) * (ypos != 210);
+		xpos += 18 * (kb_IsDown(kb_KeyRight) && xpos < 28 + (13 * 18)) * (ypos != 210) - 18 * (kb_IsDown(kb_KeyLeft) && xpos > 28) * (ypos != 210);
+		ypos += 18 * (kb_IsDown(kb_KeyDown) && ypos < 25 + (9 * 18)) * (ypos != 210) - 18 * (kb_IsDown(kb_KeyUp) && ypos > 25) * (ypos != 210);
 	}
-	if (y == 150)
-	{ //"achievements"
-		Achievements();
-		y = 150;
-		delay(100);
-		MainMenu();
+	delay(200);
+	kb_Scan();
+	Game();
+}
+
+void pauseMenu(void) {
+	int16_t posX, posY = 100, y;
+	RenderEngine();
+	gfx_SetTextFGColor(0);
+	while (!(kb_IsDown(kb_KeyClear)) && !(kb_IsDown(kb_Key2nd) && posY == 100)) {
+		for (y = 100; y < 175; y += 25) {
+			gfx_SetColor(149);
+			gfx_FillRectangle(40, y, 130, 20);
+			gfx_FillRectangle(41, y + 1, 128, 18);
+			gfx_SetColor(0);
+			if (posY == y) gfx_SetColor(255);
+			gfx_Rectangle(40, y, 130, 20);
+			gfx_Rectangle(41, y + 1, 128, 18);
+		}
+		for (pos = 15; pos < 18; pos++) {
+			DrawCenteredText(MenuElements[pos], 105, 106 + ((pos - 15) * 25));
+		}
+		gfx_BlitBuffer();
+		kb_Scan();
+		if (kb_IsDown(kb_KeyUp) || kb_IsDown(kb_KeyDown)) delay(80);
+		if (kb_IsDown(kb_KeyUp) && posY > 100) posY -= 25;
+		if (kb_IsDown(kb_KeyDown) && posY < 150) posY += 25;
+		delay(100 * (kb_IsDown(kb_KeyUp) || kb_IsDown(kb_KeyDown)));
+		if (kb_IsDown(kb_Key2nd) && posY == 125) {
+			Settings(1);
+			RenderEngine();
+		}
+		if (kb_IsDown(kb_Key2nd) && posY == 150) {
+			// save the world data, playerX, playerY, curPos, curX, curY, timeofday, etc...
+			//world_file = "        ";
+			memcpy(world_file, worldNameStr, 8);
+			appvar = ti_Open(world_file, "a+");
+			int world_offset;
+			ti_Write("MCCESV", 6, 1, appvar);
+			ti_Write((void *)0xFF0000, 3, 1, appvar); // this is overwritten later
+			ti_Write(&curX, 3, 1, appvar);
+			ti_Write(&curY, 3, 1, appvar);
+			ti_Write(&MaxX, 3, 1, appvar);
+			ti_Write(&MaxY, 3, 1, appvar);
+			ti_Write(&flymode, 3, 1, appvar);
+			ti_Write(&scrollX, 3, 1, appvar);
+			ti_Write(&scrollY, 3, 1, appvar);
+			ti_Write(&playerX, 3, 1, appvar);
+			ti_Write(&playerY, 3, 1, appvar);
+			ti_Write(&curPos, 3, 1, appvar);
+			ti_Write(&timeofday, 3, 1, appvar);
+			ti_Write(&hotbarSel, 3, 1, appvar);
+			ti_Write(&hotbar, 5, 3, appvar);
+			world_offset = ti_Tell(appvar);
+			ti_Seek(6, SEEK_SET, appvar);
+			ti_Write(&world_offset, 3, 1, appvar);
+			ti_Seek(world_offset, SEEK_SET, appvar);
+			compressAndWrite(&WorldData, MaxX * MaxY, appvar);
+			ti_SetArchiveStatus(1, appvar);
+			ti_Close(appvar);
+		}
 	}
-	if (y == 175)
-	{ //"Settings"
-		Settings();
-		y = 175;
-		delay(100);
-		MainMenu();
+	delay(200);
+	kb_Scan();
+	Game();
+}
+
+void MainMenu()
+{
+	int8_t scroll = 16, list;
+	curY = 125;
+	// fix closing the game unnecessarily.
+	kb_Scan();
+	while (!(kb_IsDown(kb_KeyClear)) && !(kb_IsDown(kb_Key2nd) && curY == 200))
+	{
+		// draw the main menu
+		kb_Scan();
+		DrawDirtBackground(scroll);
+		gfx_SetTextFGColor(230);
+		gfx_PrintStringXY("v1.0.2", 3, 230);
+		gfx_SetTextFGColor(0);
+		appvar = ti_Open("MC2DDAT", "r");
+		logo = ti_GetDataPtr(appvar);
+		ti_Close(appvar);
+		gfx_SetTransparentColor(255);
+		gfx_ScaledTransparentSprite_NoClip(logo, 32, 20, 2, 2);
+		gfx_SetTransparentColor(7);
+		/* buttons */
+		for (y = 125; y < 225; y += 25) {
+			gfx_SetColor(181);
+			gfx_FillRectangle(60, y, 192, 20);
+			gfx_SetColor(0);
+			gfx_Rectangle(60, y, 192, 20);
+			gfx_Rectangle(61, y + 1, 190, 18);
+		}
+		/* button text */
+		for (list = 0; list < 4; list++) {
+			DrawCenteredText(MenuElements[list], 160, 131 + (list * 25));
+		}
+		gfx_SetColor(254);
+		gfx_Rectangle(60, curY, 192, 20);
+		gfx_Rectangle(61, curY + 1, 190, 18);
+		gfx_BlitBuffer();
+
+		scroll++;
+		if (scroll > 16)
+			scroll = 0;
+
+		if (kb_IsDown(kb_KeyUp) && curY > 125)
+		{
+			// delay(150);
+			curY -= 25;
+		}
+		if (kb_IsDown(kb_KeyDown) && curY < 200)
+		{
+			// delay(150);
+			curY += 25;
+		}
+		if (kb_IsDown(kb_Key2nd))
+		{
+			if (curY == 125)
+			{ //"play menu"
+				delay(100);
+				playMenu();
+				y = 125;
+				delay(100);
+				MainMenu();
+			}
+			if (curY == 150)
+			{ //"achievements"
+				delay(100);
+				Achievements();
+				curY = 150;
+				delay(100);
+				MainMenu();
+			}
+			if (curY == 175)
+			{ //"Settings"
+				delay(100);
+				Settings(0);
+				curY = 175;
+				delay(100);
+				MainMenu();
+			}
+		}
 	}
 	gfx_End();
+	appvar = ti_Open("MCESETT", "w");
+	ti_Write(gameSettings, sizeof gameSettings, 1, appvar);
+	ti_CloseAll();
+	exit(1);
+}
+
+void Achievements(void)
+{
+	int16_t x, y;
+	DrawDirtBackground(0);
+	gfx_SetColor(181);
+	gfx_FillCircle(10, 10, 5);
+	gfx_FillCircle(309, 10, 5);
+	gfx_FillCircle(10, 229, 5);
+	gfx_FillCircle(309, 229, 5);
+	gfx_FillRectangle(10, 5, 300, 230);
+	gfx_FillRectangle(5, 10, 310, 220);
+	gfx_SetTextFGColor(0);
+	DrawCenteredText(MenuElements[1], 160, 20);
+	gfx_SetTextFGColor(255);
+	for (x = 2; x < 18; x++)
+	{
+		for (y = 2; y < 13; y++)
+		{
+			gfx_TransparentSprite(BlockTextures[201], x * 16, y * 16);
+		}
+	}
+	gfx_BlitBuffer();
+
+	while (!(os_GetCSC()));
+	delay(100);
+}
+
+void Settings(bool ingameTrue)
+{
+	int16_t tab = 0, itemScroll = 0, pos, option, curpX = 10, curpY = 40;
+	DrawDirtBackground(0);
+	if (ingameTrue == 1) RenderEngine();
+	while (!(kb_IsDown(kb_KeyClear)) && !(kb_IsDown(kb_Key2nd) && tab == 3))
+	{
+		kb_Scan();
+		gfx_SetColor(74);
+		gfx_FillRectangle(5, 5, 310, 230);
+		gfx_SetColor(0);
+		gfx_Rectangle(5, 5, 310, 230);
+		gfx_Rectangle(6, 6, 308, 228);
+		for (y = 40; y < 140; y += 20) {
+			gfx_SetColor(181);
+			if (y < 120) gfx_FillRectangle(10, y, 80, 16);
+			if (tab < 2) gfx_FillRectangle(100, y, 180, 16);
+			// selected tab/category
+			gfx_SetColor(148);
+			gfx_FillRectangle(10, 40 + tab * 20, 80, 16);
+			gfx_SetColor(0);
+			if (y < 120) {
+				gfx_Rectangle(10, y, 80, 16);
+				gfx_Rectangle(11, y + 1, 78, 14);
+			}
+			if (tab < 2) gfx_Rectangle(100, y, 180, 16);
+			if (tab < 2) gfx_Rectangle(101, y + 1, 178, 14);
+		}
+		for (pos = 4; pos < 8; pos++) {
+			DrawCenteredText(MenuElements[pos], 50, 44 + ((pos - 4) * 20));
+		}
+		gfx_SetColor(254);
+		gfx_Rectangle(curpX, curpY, 180 - (100 * (curpX == 10)), 16);
+		gfx_Rectangle(curpX + 1, curpY + 1, 178 - (100 * (curpX == 10)), 14);
+		if (tab == 0) {
+			gameSettingsStr[0] = languages[gameSettings[0]];
+			gameSettingsStr[1] = SpeedStr[gameSettings[1]];
+			gameSettingsStr[2] = togglesOnOff[gameSettings[2]];
+			gameSettingsStr[3] = togglesOnOff[gameSettings[3]];
+			for (pos = 0; pos < 4; pos++) {
+				gfx_SetTextXY(105, 44 + (pos * 20));
+				gfx_PrintString(GameOptionStr[pos]);
+				gfx_PrintString(": ");
+				gfx_PrintString(gameSettingsStr[pos]);
+			}
+		}
+		// about tab
+		if (tab == 2) {
+			gfx_SetColor(148);
+			gfx_FillRectangle(100, 30, 200, 130);
+			gfx_FillRectangle(10, 180, 300, 30);
+			gfx_SetColor(0);
+			gfx_Rectangle(100, 30, 200, 130);
+			gfx_Rectangle(101, 31, 198, 128);
+			gfx_Rectangle(10, 180, 300, 30);
+			gfx_Rectangle(11, 181, 298, 28);
+			gfx_SetTextFGColor(0);
+			gfx_SetTextXY(15, 185);
+			gfx_PrintString("Discord:");
+			gfx_SetTextFGColor(26);
+			gfx_PrintString("https://discord.gg/xavH5eTJP2");
+			gfx_SetTextXY(15, 196);
+			gfx_SetTextFGColor(0);
+			gfx_PrintString("Github:");
+			gfx_SetTextFGColor(26);
+			gfx_PrintString("https://github.com/TimmyTurner51");
+			gfx_SetTextFGColor(0);
+			for (pos = 0; pos < 12; pos++) {
+				gfx_PrintStringXY(About[pos], 105, 35 + (pos * 10));
+			}
+		}
+		gfx_BlitBuffer();
+
+		if (kb_IsDown(kb_Key2nd) && curpX == 10) {
+			tab = (curpY - 40) / 20;
+		}
+		if (kb_IsDown(kb_Key2nd) && curpX != 10) {
+			option = (curpY - 40) / 20;
+			// 4 is the amount of current options
+			gameSettings[option + (tab * 4)]++;
+			if (gameSettings[option + (tab * 4)] > gameSettingsMaxVals[option + (tab * 4)]) gameSettings[option + (tab * 4)] = 0;
+			delay(200);
+		}
+		if (kb_IsDown(kb_KeyUp) || kb_IsDown(kb_KeyDown) || kb_IsDown(kb_KeyLeft) || kb_IsDown(kb_KeyRight))
+		delay(80);
+		if (kb_IsDown(kb_KeyUp) && curpY > 40) curpY -= 20;
+		if (kb_IsDown(kb_KeyDown) && curpY < 120 - (20 * (curpX == 10))) curpY += 20;
+		if (kb_IsDown(kb_KeyLeft)) {
+			curpX = 10;
+			curpY = 40 + tab * 20;
+		}
+		if (kb_IsDown(kb_KeyRight) && tab != 2) curpX = 100;
+	}
+	delay(100);
+	appvar = ti_Open("MCESETT", "w");
+	ti_Write(gameSettings, sizeof gameSettings, 1, appvar);
+	ti_Close(appvar);
+	LoadResourcesScreen();
+}
+
+void input(char *string, int size)
+{
+	const char *charsUpper = "\0\0\0\0\0\0\0\0\0\0\"WRMH\0\0?[VQLG\0\0:ZUPKFC\0 YTOJEB\0\0XSNIDA\0\0\0\0\0\0\0\0";
+	const char *charsLower = "\0\0\0\0\0\0\0\0\0\0\"wrmh\0\0?[vqlg\0\0:zupkfc\0 ytojeb\0\0xsnida\0\0\0\0\0\0\0\0";
+	const char *charsNum = "\0\0\0\0\0\0\0\0\0\0\+-*/\0\0\0?369(\0\0\0\0258)\0\0\00147,\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+	uint8_t key, length = strlen(string), scroll = 0, i = 0, chartype = 0;
+	// set i to the first occurence of a null character
+	for (i = 0; i < length; i++) {
+		if (i > 31) scroll++;
+		if (string[i] == 0) break;
+	}
+	gfx_SetColor(181);
+	gfx_FillRectangle(0, 216, 320, 24);
+	gfx_SetColor(74);
+	gfx_Rectangle(0, 216, 320, 24);
+	gfx_Rectangle(1, 217, 318, 22);
+	gfx_SetColor(181);
+	while((key = os_GetCSC()) != sk_Enter) {
+		gfx_SetColor(181);
+		gfx_FillRectangle(1, 217, 318, 22);
+		gfx_SetColor(0);
+		gfx_FillRectangle(4, 223, 10, 10);
+		gfx_SetTextFGColor(254);
+		if (chartype == 0) gfx_PrintStringXY("A", 5, 224);
+		if (chartype == 1) gfx_PrintStringXY("a", 5, 224);
+		if (chartype == 2) gfx_PrintStringXY("1", 5, 224);
+		gfx_SetTextFGColor(0);
+		gfx_SetTextXY(18, 224);
+		pos = scroll;
+		for (pos = scroll; pos < scroll + 32; pos++)
+		{
+			gfx_SetTextFGColor(0);
+			if (pos < i)
+			gfx_PrintChar(string[pos]);
+		}
+		gfx_BlitBuffer();
+
+		if (kb_IsDown(kb_KeyAlpha)) {
+			delay(200);
+			chartype++;
+			if (chartype > 2) chartype = 0;
+		} 
+
+		if(charsUpper[key] && i <= size) {
+			if (chartype == 0) string[i] = charsUpper[key];
+			if (chartype == 1) string[i] = charsLower[key];
+			if (chartype == 2) string[i] = charsNum[key];
+			string[i + 1] = 0;
+			i++;
+			if (i > 32) scroll++;
+		}
+		if (kb_IsDown(kb_KeyDel) && i > 0) {
+			delay(80);
+			string[i] = 0;
+			if (i > 32 && scroll > 0) scroll--;
+			i--;
+		}
+	}
 }
 
 void playMenu(void)
 {
-
-	int24_t CursorY, i, scroll, redraw, tab;
-	int24_t worldLength, worldHeight, cheats, scrollYb;
-	char *gamemodeStr[3] = {"Survival", "Creative", "Hardcore"};
-	char *difficultyStr[4] = {"Peaceful", "Easy", "Normal", "Hard"};
-	char *cheatsStr[2] = {"Off", "On"};
-	char *worldTypesStr[3] = {"Standard", "Superflat", "Large Biomes"};
+	gamemode = 0;
+	cheats = 0;
 	findAppvars("MCCESV");
-	drawDirtBackground(0);
-	gfx_SetTransparentColor(255);
 	tab = 0;
 	scroll = 0;
 	CursorY = 40;
@@ -272,8 +1599,7 @@ void playMenu(void)
 	while (!(kb_IsDown(kb_KeyClear)))
 	{
 		kb_Scan();
-
-		drawDirtBackground(0);
+		DrawDirtBackground(0);
 		gfx_SetColor(181);
 		gfx_FillRectangle(20, 20, 280, 200);
 		gfx_SetColor(0);
@@ -281,24 +1607,20 @@ void playMenu(void)
 		gfx_Rectangle(20, 20, 280, 20);
 		gfx_SetColor(148);
 		gfx_FillRectangle(21 + (tab * 89), 21, 100, 18);
-		gfx_PrintStringXY("My Worlds", 40, 25);
-		gfx_PrintStringXY("Servers", 134, 25);
-		gfx_PrintStringXY("Friends", 240, 25);
-
+		DrawCenteredText(MenuElements[8], 70, 25);
+		DrawCenteredText(MenuElements[9], 160, 25);
+		DrawCenteredText(MenuElements[10], 250, 25);
 		if (tab == 0)
 		{
 			gfx_SetColor(148);
 			gfx_FillRectangle(21, 40, 278, 25);
-			gfx_PrintStringXY("Create New World", 110, 47);
+			DrawCenteredText(MenuElements[11], 160, 47);
 			gfx_SetColor(254);
 			gfx_Rectangle(21, CursorY, 278, 25 - ((CursorY != 40) * 8));
 			gfx_Rectangle(22, CursorY + 1, 276, 23 - ((CursorY != 40) * 8));
-			if (foundCount == 0)
-			{
-				gfx_PrintStringXY("No Worlds were found!", 90, 120);
-			}
-			else
-			{
+			if (foundCount == 0) {
+				gfx_PrintStringXY(MenuElements[12], 90, 120);
+			}else{
 				y = 0;
 				for (i = scroll; i < scroll + 2; i++)
 				{
@@ -306,187 +1628,97 @@ void playMenu(void)
 						gfx_PrintStringXY(WorldsList[i], 40, 70 + y);
 					y += 17;
 				}
-			}
-
-			if (kb_IsDown(kb_KeyUp) && (CursorY == 65))
-			{
-				delay(50);
-				CursorY = 40;
-				scrollYb = -1;
-			}
-			else
-			{
-				if (kb_IsDown(kb_KeyUp) && (scrollYb > 0) && (CursorY != 40))
+				if (kb_IsDown(kb_KeyUp) && (CursorY == 65))
 				{
 					delay(50);
-					CursorY -= 17;
-					scrollYb--;
+					CursorY = 40;
+					scrollYb = -1;
 				}
-			}
-			if (kb_IsDown(kb_KeyDown) && (CursorY == 40) && (foundCount != 0))
-			{
-				delay(50);
-				CursorY = 65;
-				scrollYb = 0;
-				scroll = 0;
-			}
-			else
-			{
-				if (kb_IsDown(kb_KeyDown) && (scrollYb < foundCount - 1) && (scrollYb < 10))
+				else
+				{
+					if (kb_IsDown(kb_KeyUp) && (scrollYb > 0) && (CursorY != 40))
+					{
+						delay(50);
+						CursorY -= 17;
+						scrollYb--;
+					}
+				}
+				if (kb_IsDown(kb_KeyDown) && (CursorY == 40) && (foundCount != 0))
 				{
 					delay(50);
-					CursorY += 17;
-					scrollYb++;
+					CursorY = 65;
+					scrollYb = 0;
+					scroll = 0;
 				}
-				if (kb_IsDown(kb_KeyDown) && (scrollYb < foundCount - 1) && (scrollYb > 9))
+				else
 				{
-					delay(50);
-					scroll++;
-					scrollYb++;
+					if (kb_IsDown(kb_KeyDown) && (scrollYb < foundCount - 1) && (scrollYb < 10))
+					{
+						delay(50);
+						CursorY += 17;
+						scrollYb++;
+					}
+					if (kb_IsDown(kb_KeyDown) && (scrollYb < foundCount - 1) && (scrollYb > 9))
+					{
+						delay(50);
+						scroll++;
+						scrollYb++;
+					}
 				}
 			}
-			if (kb_IsDown(kb_Key2nd) && (CursorY != 40))
+			if (kb_IsDown(kb_Key2nd) && (CursorY > 40))
 			{
 				world_file = WorldsList[scrollYb];
-				WorldEngine();
-			}
-			if (kb_IsDown(kb_Key2nd) && (CursorY == 40))
-			{
-				CursorY = 80;
-				gamemode = 0;
-				difficulty = 0;
-				cheats = 0;
-				worldType = 0;
-				redraw = 1;
-				while (!(kb_IsDown(kb_KeyClear)))
+				appvar = ti_Open(world_file, "r");
+				if (!memcmp(ti_GetDataPtr(appvar), "MCCESV", 6))
 				{
-					if (redraw == 1)
-					{
-						redraw = 0;
-						drawDirtBackground(0);
-						for (y = 80; y < 220; y += 20)
-						{
-							gfx_SetColor(181);
-							gfx_FillRectangle(50, y, 220, 16);
-							gfx_SetColor(0);
-							gfx_Rectangle(50, y, 220, 16);
-							gfx_Rectangle(51, y + 1, 218, 14);
-							gfx_SetColor(148);
-							if (y < 200) gfx_FillRectangle(152, y + 3, 94, 10);
-						}
-						gfx_PrintStringXY("World Name:", 73, 84);
-						gfx_PrintStringXY(&worldNameStr, 154, 84);
-						gfx_PrintStringXY("Seed:", 73, 104);
-						gfx_PrintStringXY(&seedStr, 154, 104);
-						gfx_PrintStringXY("Gamemode:", 73, 124);
-						gfx_PrintStringXY(gamemodeStr[gamemode], 154, 124);
-						gfx_PrintStringXY("Difficulty:", 73, 144);
-						gfx_PrintStringXY(difficultyStr[difficulty], 154, 144);
-						gfx_PrintStringXY("Cheats:", 73, 164);
-						gfx_PrintStringXY(cheatsStr[cheats], 154, 164);
-						gfx_PrintStringXY("World Type:", 73, 184);
-						gfx_PrintStringXY(worldTypesStr[worldType], 154, 184);
-						gfx_PrintStringXY("Generate", 128, 204);
-						gfx_SetColor(254);
-						gfx_Rectangle(50, CursorY, 220, 16);
-						gfx_Rectangle(51, CursorY + 1, 218, 14);
-						gfx_BlitBuffer();
-					}
-					kb_Scan();
-					if (kb_IsDown(kb_KeyUp) && (CursorY > 80))
-					{
-						CursorY -= 20;
-						redraw = 1;
-					}
-					if (kb_IsDown(kb_KeyDown) && (CursorY < 200))
-					{
-						CursorY += 20;
-						redraw = 1;
-					}
-					if (kb_IsDown(kb_Key2nd))
-					{
-						redraw = 1;
-						if (CursorY == 80)
-						{
-							user_input(worldNameStr, 16);
-							delay(100);
-						}
-
-						if (CursorY == 100)
-						{
-							user_input(seedStr, 16);
-							delay(100);
-						}
-
-						if (CursorY == 120)
-						{
-							gamemode++;
-							if (gamemode > 2)
-							{
-								gamemode = 0;
-							}
-						}
-						if (CursorY == 140)
-						{
-							difficulty++;
-							if (difficulty > 3)
-							{
-								difficulty = 0;
-							}
-						}
-						if (CursorY == 160)
-						{
-							cheats = (cheats == 0);
-						}
-						if (CursorY == 180)
-						{
-							worldType++;
-							if (worldType > 2)
-							{
-								worldType = 0;
-							}
-						}
-						if (CursorY == 200)
-						{
-							worldLength = 256;
-							worldHeight = 256;
-						
-							//supposed to take the first 8 letters of the worldName string and copy to world_file
-							world_file = "        ";
-							memcpy(world_file, worldNameStr, 8);
-
-							dbg_sprintf(dbgout, "%s", world_file);
-
-							if (seedStr == "Random Seed") srand(rtc_Time());
-							hashstr(seedStr);
-							WorldEngine();
-							delay(200);
-							redraw = 1;
-							break;
-						}
-					}
-					/*
-			If KEY!=0 and KEY!=15
-				Goto NEWWORLDDRAW
-			}
-			*/
+					int world_offset;
+					ti_Seek(6, SEEK_SET, appvar);
+					ti_Read(&world_offset, 3, 1, appvar);
+					ti_Read(&curX, 3, 1, appvar);
+					ti_Read(&curY, 3, 1, appvar);
+					ti_Read(&MaxX, 3, 1, appvar);
+					ti_Read(&MaxY, 3, 1, appvar);
+					ti_Read(&flymode, 3, 1, appvar);
+					ti_Read(&scrollX, 3, 1, appvar);
+					ti_Read(&scrollY, 3, 1, appvar);
+					ti_Read(&playerX, 3, 1, appvar);
+					ti_Read(&playerY, 3, 1, appvar);
+					ti_Read(&curPos, 3, 1, appvar);
+					ti_Read(&timeofday, 3, 1, appvar);
+					ti_Read(&hotbarSel, 3, 1, appvar);
+					ti_Read(&hotbar, 5, 3, appvar);
+					ti_Seek(world_offset, SEEK_SET, appvar);
+					zx7_Decompress(&WorldData, ti_GetDataPtr(appvar));
+					ti_Close(appvar);
+					loaded_world = 1;
+					Game();
 				}
+			}
+			if (kb_IsDown(kb_Key2nd) && (CursorY == 40)) {
+				genTrees = 1;
+				genCaves = 1;
+				genFlowers = 1;
+				genVillages = 1;
+				worldSize = 0;
+				worldType = 0;
+				CursorY = 60;
+				NewWorldScreen();
 			}
 		}
 		if (tab == 1)
 		{
 			gfx_SetColor(148);
 			gfx_FillRectangle(21, 40, 278, 25);
-			gfx_PrintStringXY("Add Server", 116, 47);
+			DrawCenteredText(MenuElements[13], 160, 47);
 			gfx_SetColor(254);
 			gfx_Rectangle(21, CursorY, 278, 25 - ((CursorY != 40) * 8));
 			gfx_Rectangle(22, CursorY + 1, 276, 23 - ((CursorY != 40) * 8));
 		}
 		if (tab == 2)
 		{
-			gfx_PrintStringXY("Friends are not Available", 80, 47);
+			DrawCenteredText(MenuElements[14], 160, 47);
 		}
-
 		gfx_BlitBuffer();
 
 		if (kb_IsDown(kb_KeyLeft) && (tab > 0))
@@ -502,1122 +1734,180 @@ void playMenu(void)
 			CursorY = 40;
 		}
 	}
+	MainMenu();
 }
 
-void Achievements(void)
-{
-	int24_t x, y;
-	drawDirtBackground(0);
-	gfx_SetColor(181);
-	gfx_FillCircle(10, 10, 5);
-	gfx_FillCircle(309, 10, 5);
-	gfx_FillCircle(10, 229, 5);
-	gfx_FillCircle(309, 229, 5);
-	gfx_FillRectangle(10, 5, 300, 230);
-	gfx_FillRectangle(5, 10, 310, 220);
-	gfx_SetTextFGColor(0);
-	gfx_PrintStringXY("Achievements:", 20, 15);
-	gfx_SetTextFGColor(255);
-	for (x = 2; x < 18; x++)
-	{
-		for (y = 2; y < 13; y++)
-		{
-			gfx_TransparentSprite(sprites[1], x * 16, y * 16);
-		}
-	}
-	gfx_BlitBuffer();
-
-	while (!(os_GetCSC()))
-		;
-	delay(100);
-}
-
-void Settings(void)
-{
-	int24_t x, y, i, redraw;
-	x = 10;
-	y = 20;
-	redraw = 1;
+void NewWorldScreen(void) {
 	while (!(kb_IsDown(kb_KeyClear)))
 	{
-		if (redraw == 1)
+		DrawDirtBackground(0);
+		for (y = 60; y < 220; y += 20)
 		{
-			redraw = 0;
-			drawDirtBackground(0);
-			for (i = 20; i < 180; i += 20)
-			{
-				gfx_SetColor(181);
-				gfx_FillRectangle(10, i, 140, 16);
-				gfx_FillRectangle(170, i, 140, 16);
-			}
-			gfx_SetColor(254);
-			gfx_Rectangle(x, y, 140, 16);
-			gfx_Rectangle(x + 1, y + 1, 138, 14);
-			gfx_BlitBuffer();
-		}
-		kb_Scan();
-		if (kb_IsDown(kb_KeyUp) && (y > 20))
-		{
-			y -= 20;
-			redraw = 1;
-		}
-		if (kb_IsDown(kb_KeyDown) && (y < 160))
-		{
-			y += 20;
-			redraw = 1;
-		}
-		if (kb_IsDown(kb_KeyLeft))
-		{
-			x = 10;
-			redraw = 1;
-		}
-		if (kb_IsDown(kb_KeyRight))
-		{
-			x = 170;
-			redraw = 1;
-		}
-	}
-	delay(100);
-}
-
-void WorldEngine(void)
-{
-	ti_var_t appvar;
-	int24_t redraw, x, y, scrollX, scrollY, playerX, playerY, playerPos, curX, curY, posX, jump;
-	int24_t chunkX = 0, multiplier = 0, playerPosTest, height, flymode, timer, temptimer;
-	int8_t angle, i, health, hunger, exp, bgColor, cloudX, fall;
-	//{grass, sand, water, lava}
-	int ticks[5] = { 0, 0, 0, 0 };
-	uint8_t xb, yb;
-	gfx_sprite_t *tempSpr = gfx_MallocSprite(14, 14);
-
-		timeofday = 0;
-		flymode = 0;
-		timer = 0;
-
-		posX = 0;
-		hotbar[0] = 0;
-		hotbar[1] = 0;
-		hotbar[2] = 0;
-		hotbar[3] = 0;
-		hotbar[4] = 0;
-		// the * 2 is for half hearts
-		health = 9 * 2;
-		hunger = 9 * 2;
-		exp = 0;
-		//0 is the first pos in the hotbar array (it's max size is 5 btw)
-		hotbarSel = 0;
-		ticks[0] = 1;
-		curX = 16 * 10;
-		curY = 16 * 6;
-		playerX = 1;
-		playerY = 0;
-		curPos = (curX / 16) + ((curY / 16) * worldLength) + playerX;
-		scrollX = 0;
-		scrollY = 0;
-		playerPos = 0;
-
-		//set selected block to grass block...
-		//blockSel = 1;
-	if (appvar = (ti_Open(world_file, "r")))
-	{
-		if (!memcmp(ti_GetDataPtr(appvar), "MCCESV", 6))
-		{
-			int world_offset;
-			ti_Seek(6, SEEK_SET, appvar);
-			ti_Read(&world_offset, 3, 1, appvar);
-			ti_Read(&worldLength, 3, 1, appvar);
-			ti_Read(&worldHeight, 3, 1, appvar);
-			ti_Read(&flymode, 3, 1, appvar);
-			ti_Read(&gamemode, 3, 1, appvar);
-			ti_Read(&scrollX, 3, 1, appvar);
-			ti_Read(&scrollY, 3, 1, appvar);
-			ti_Read(&playerX, 3, 1, appvar);
-			ti_Read(&playerY, 3, 1, appvar);
-			ti_Read(&playerPos, 3, 1, appvar);
-			ti_Read(&curPos, 3, 1, appvar);
-			ti_Read(&curX, 3, 1, appvar);
-			ti_Read(&curY, 3, 1, appvar);
-			ti_Read(&timeofday, 3, 1, appvar);
-			ti_Read(&hotbarSel, 3, 1, appvar);
-			ti_Read(&hotbar, 5, 3, appvar);
-			ti_Read(&health, 3, 1, appvar);
-			ti_Read(&hunger, 3, 1, appvar);
-			ti_Read(&exp, 3, 1, appvar);
-			ti_Seek(world_offset, SEEK_SET, appvar);
-			zx7_Decompress(&WorldData, ti_GetDataPtr(appvar));
-			ti_Close(appvar);
-			loaded_world = 1;
-		}
-	}
-
-	if (!loaded_world)
-	{
-
-		drawDirtBackground(0);
-		gfx_SetTextFGColor(254);
-		gfx_PrintStringXY("Generating World", 102, 90);
-		gfx_PrintStringXY("Building Terrain", 104, 104);
-		gfx_SetColor(148);
-		gfx_FillRectangle(90, 120, 320 - 180, 7);
-		gfx_SetColor(0);
-		gfx_Rectangle(90, 120, 320 - 180, 7);
-		gfx_SetColor(6);
-
-		//this is an updated generator, and it to be used with the new textures...we now have bedrock too!
-		//thank u LogicalJoe!!
-		srand(seed*multiplier+chunkX); // set the seed
-		height = randInt(60, 120);
-
-		//from Zeroko: srand(worldSeed*multiplier+chunkX)
-
-		chunkX = 0;
-		
-		multiplier = seed / 2;
-		// handle generation of air first, so everything can generate properly. 
-		// This looks bad, but the generator is pretty fast, and that's all I'm worried about.
-		for (x = 0; x < worldLength * worldHeight; x++)
-		{
-			WorldData[x] = 0;
-		}
-		//rest of generation
-		for (x = 0; x < worldLength; x++)
-		{
-			gfx_VertLine(91 + (x / 2), 121, 5);
-			gfx_BlitBuffer();
-			if (x % 16) chunkX++;
-			srand(seed*multiplier+chunkX); // set the seed
-			if ((worldType != 1) && (randInt(0, 2) == 0))
-			{
-				height += randInt(-1, 1);
-				if (height < 1)
-					height += 2;
-			}
-			if (randInt(1, 10) == 1)  //tree
-			{
-				WorldData[x + ((height - 1) * worldLength)] = OAKLOGS + 1;
-				WorldData[x + ((height - 2) * worldLength)] = OAKLOGS + 1;
-				WorldData[x + ((height - 3) * worldLength)] = OAKLOGS + 1;
-				WorldData[x + ((height - 4) * worldLength)] = OAKLOGS + 1;
-				WorldData[x + ((height - 5) * worldLength)] = OAKLEAVES + 1;
-				WorldData[x + ((height - 4) * worldLength) - 1] = OAKLEAVES + 1;
-				WorldData[x + ((height - 4) * worldLength) + 1] = OAKLEAVES + 1;
-			}
-			if (randInt(0, 6) == 2)
-			{
-				WorldData[x + (height * worldLength)] = WATER + 1;
-				for (y = height + 1; y < height + randInt(10, 30); y++)
-				{
-					WorldData[x + (y * worldLength)] = WATERENTITY;
-				}
-				height = y - randInt(10, 30);
-			}else{
-				WorldData[x + (height * worldLength)] = GRASS + 1;
-				for (y = height + 1; y < height + 3; y++)
-				{
-					WorldData[x + y * worldLength] = DIRT + 1;
-				}
-			}
-			for (y = height + 3; y < worldHeight; y++)
-			{
-				WorldData[x + y * worldLength] = STONE + 1;
-				// cave generation
-				if (randInt(1,13) == 3)
-				{
-					for (i = height + randInt(23, 30); i < height + randInt(23, 30); i++)
-					{
-						WorldData[x + i * worldLength] = 0;
-					}
-				}
-				
-				//ore generation
-				if ((randInt(1, 40) == 10) && (WorldData[x + y * worldLength] != 0) && (height > 30))
-					WorldData[x + y * worldLength] = COALORE;
-				if ((randInt(1, 40) == 10) && (WorldData[x + y * worldLength] != 0) && (height > 130))
-					WorldData[x + y * worldLength] = IRONORE;
-				if ((randInt(1, 40) == 10) && (WorldData[x + y * worldLength] != 0) && (height > 160))
-					WorldData[x + y * worldLength] = GOLDORE;
-				//if ((randInt(1, 40) == 10) && (WorldData[x + y * worldLength] != 0) && (height > 160))
-				//	WorldData[x + y * worldLength] = DIAMONDORE;
-				
-				//stronghold
-				if ((randInt(1, 900) == 20) && (WorldData[x + y * worldLength] != 0) && (x > 10))
-				{
-					for (xb = x - 8; xb < x; xb++) {
-						for (yb = y; yb < y + 8; yb++) {
-							WorldData[xb + yb * worldLength] = 0;
-							if ((xb == x - 8) || (xb == x - 1) || (yb == y) || (yb == y + 7))
-							WorldData[xb + yb * worldLength] = COBBLESTONE + 1;
-						}
-					}
-				}
-
-			}
-			WorldData[x + worldHeight * worldLength] = BEDROCK + 1;
-		}
-		for (x = 130; x < 320 - 92; x++)
-		{
-			//green progress bar... for looks at this point
-			gfx_VertLine(x, 121, 5);
-			delay(20);
-			gfx_BlitBuffer();
-		}
-
-	}
-
-	jump = 0;
-	angle = 0;
-	
-	while (WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == 0)
-	{
-		playerY++;
-		curPos += worldLength;
-	}
-
-	LoadBlocks("MCEDEFT");
-	gfx_SetDrawBuffer();
-	fall = 0;
-	cloudX = 2;
-	while (1)
-	{
-		kb_Scan();
-
-		bgColor = dayColors[timeofday / 6000];
-		
-		if ((kb_IsDown(kb_Key7)) && (health > 0)) 
-		{
-			health--;
-			bgColor = 224;
-			gfx_BlitBuffer();
-			delay(120);
-			ticks[0] = 1;
-		}
-		if ((hunger == 18) && (health != 18) && (timer == 0)) 
-		{
-			timer = 1;
-			temptimer = 1;
-		}
-
-		if (temptimer != 0) temptimer++;
-		if ((timer == 1) && (temptimer == 80))
-		{
-			timer = 0;
-			health++;
-		}
-		if ((flymode == 0) && (WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == 0))
-		{
-			ticks[0] = 1;
-			scrollY -= 4;
-			curY -= 4;
-			if (scrollY < -15)
-			{
-				if (jump == 0) fall++;
-				scrollY = 0;
-				playerY++;
-				curPos += worldLength;
-				curY += 16;
-				jump = 0;
-				if ((fall > 4) && (gamemode != 1) && (WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] != 0))
-				{
-					bgColor = 224;
-					health -= fall - 3;
-					fall = 0;
-				}
-			}
-		}
-
-		if ((ticks[0] != 0) || (ticks[1] != 0) || (ticks[2] != 0) || (ticks[3] != 0))
-		{
-			if (ticks[0] != 0) ticks[0]--;
-			if (ticks[2] != 0) ticks[2]--;
-			if (ticks[3] != 0) ticks[3]--;
-			gfx_FillScreen(bgColor);
-			gfx_SetColor(32);
-			playerPos = (playerX + playerY * worldLength);
-			//behaviors w/ block drawing, and fixing cursor bugs by forcing it to "snap to the grid"		
-			gfx_SetTransparentColor(252);
-			for (y = scrollY; y < 241 + scrollY; y += 16)
-			{
-				for (x = scrollX; x < 321 + scrollX; x += 16)
-				{
-					if (BlockData[playerPos] != 0) BlockData[playerPos]--;
-					// basic shadowing (v1.2)
-					if (WorldData[playerPos] != 0)
-					{
-						// draw the shadowing box (not for water, lava, etc.)
-						if ((WorldData[playerPos] != BEDBACK + 1) && (WorldData[playerPos] != BEDFRONT + 1) && (WorldData[playerPos] != WATER + 1) && (WorldData[playerPos] != LAVA + 1))
-						gfx_FillRectangle(x, y, 16, 16);
-						// check if air is on the left face, right face, top face, and bottom face
-						// (in that order), and draw the block if so
-						if ((WorldData[playerPos] < 256) && ((WorldData[playerPos] == WATER + 1) || (WorldData[playerPos] == LAVA + 1) || (WorldData[playerPos - 1] == 0) || (WorldData[playerPos + 1] == 0) || (WorldData[playerPos - worldLength] == 0) || (WorldData[playerPos + worldLength] == 0)))
-							gfx_TransparentSprite(sprites[WorldData[playerPos] - 1], x, y);
-						if (WorldData[playerPos] == WATERENTITY)
-							gfx_TransparentSprite(sprites[WATER], x, y);
-						if (WorldData[playerPos] == LAVAENTITY)
-							gfx_TransparentSprite(sprites[LAVA], x, y);
-						
-						// behaviors
-						if (WorldData[playerPos] == WATERENTITY)
-						{
-							ticks[4] = 0;
-							ticks[5] = 0;
-						}
-						// sand falls
-						if ((WorldData[playerPos] == SAND + 1) && ((WorldData[playerPos + worldLength] == 0) || (WorldData[playerPos + worldLength] == WATER + 1) || (WorldData[playerPos + worldLength] == LAVA + 1)) && (BlockData[playerPos] == 0))
-						{
-							BlockData[playerPos] = WorldData[playerPos + worldLength];
-							if (WorldData[playerPos + worldLength] == WATER + 1)
-								BlockData[playerPos - worldLength] = WATER + 1;
-							if (WorldData[playerPos + worldLength] == LAVA + 1)
-								BlockData[playerPos - worldLength] = LAVA + 1;
-							WorldData[playerPos] = BlockData[playerPos];
-							WorldData[playerPos + worldLength] = SAND + 1;
-							BlockData[playerPos + worldLength] = 5;
-						}
-						// water interacts with lava (source and non-source)
-						if ((WorldData[playerPos] == WATER + 1) || (WorldData[playerPos] == WATERENTITY))
-						{
-							if (WorldData[playerPos + 1] == LAVA + 1) WorldData[playerPos + 1] = NOTHING2 + 1;
-							if (WorldData[playerPos - 1] == LAVA + 1) WorldData[playerPos - 1] = NOTHING2 + 1;
-							if (WorldData[playerPos + 1] == LAVAENTITY) WorldData[playerPos + 1] = COBBLESTONE + 1;
-							if (WorldData[playerPos - 1] == LAVAENTITY) WorldData[playerPos - 1] = COBBLESTONE + 1;
-						}
-						if (((WorldData[playerPos] == LAVA + 1) || (WorldData[playerPos] == LAVAENTITY)) && (WorldData[playerPos + worldLength] == WATER + 1))
-							WorldData[playerPos + worldLength] = STONE + 1;
-						// water can be destroyed
-						if ((WorldData[playerPos] == WATERENTITY) && (WorldData[playerPos - worldLength] != WATER + 1) && (WorldData[playerPos - worldLength] != WATERENTITY) && (ticks[2] == 0))
-						{
-							WorldData[playerPos] = 0;
-							ticks[2] = 10;
-						}
-						// lava can be destroyed
-						if ((WorldData[playerPos] == LAVAENTITY) && (WorldData[playerPos - worldLength] != LAVA + 1) && (WorldData[playerPos - worldLength] != LAVAENTITY) && (ticks[3] == 0))
-						{
-							WorldData[playerPos] = 0;
-							ticks[3] = 18;
-						}
-						// water flows down
-						if ((WorldData[playerPos] == WATER + 1) && (WorldData[playerPos + worldLength] == 0) && (ticks[2] == 0))
-						{
-							WorldData[playerPos + worldLength] = WATERENTITY;
-							ticks[2] = 10;
-						}
-						if ((WorldData[playerPos] == WATERENTITY) && (WorldData[playerPos + worldLength] == 0) && (ticks[2] == 0))
-						{
-							WorldData[playerPos + worldLength] = WATERENTITY;
-							ticks[2] = 10;
-						}
-						//water flows sideways (right, then left)
-						if ((WorldData[playerPos] == WATERENTITY) && (WorldData[playerPos - 1] == 0) && (WorldData[playerPos + (worldLength * 2)] != 0) && (ticks[4] < 6) && (ticks[2] == 0))
-						{
-							if (WorldData[playerPos - 1 + worldLength] == 0)
-								WorldData[playerPos - 1 + worldLength] = WATERENTITY;
-							ticks[4]++;
-							ticks[2] = 10;
-						}
-						if ((WorldData[playerPos] == WATERENTITY) && (WorldData[playerPos + 1] == 0) && (WorldData[playerPos + (worldLength * 2)] != 0) && (ticks[5] < 6) && (ticks[2] == 0))
-						{
-							if (WorldData[playerPos + 1 + worldLength] == 0)
-								WorldData[playerPos + 1 + worldLength] = WATERENTITY;
-							ticks[5]++;
-							ticks[2] = 10;
-						}
-						ticks[4] = 0;
-						ticks[5] = 0;
-						//lava flows sideways (right, then left)
-						if ((WorldData[playerPos] == LAVAENTITY) && (WorldData[playerPos - 1] == 0) && (WorldData[playerPos + (worldLength * 2)] != 0) && (ticks[4] < 6) && (ticks[3] == 0))
-						{
-							if (WorldData[playerPos - 1 + worldLength] == 0)
-								WorldData[playerPos - 1 + worldLength] = LAVAENTITY;
-							ticks[4]++;
-							ticks[3] = 18;
-						}
-						if ((WorldData[playerPos] == LAVAENTITY) && (WorldData[playerPos + 1] == 0) && (WorldData[playerPos + (worldLength * 2)] != 0) && (ticks[5] < 6) && (ticks[3] == 0))
-						{
-							if (WorldData[playerPos + 1 + worldLength] == 0)
-								WorldData[playerPos + 1 + worldLength] = LAVAENTITY;
-							ticks[5]++;
-							ticks[3] = 18;
-						}
-						// lava flows down
-						if (((WorldData[playerPos] == LAVA + 1) || (WorldData[playerPos] == LAVAENTITY)) && (WorldData[playerPos + worldLength] == 0) && (ticks[3] == 0))
-						{
-							WorldData[playerPos + worldLength] = LAVAENTITY;
-							ticks[3] = 18;
-						}
-						// grass turns to dirt when blocks are on top of grass
-						if ((WorldData[playerPos] != 0) && (WorldData[playerPos + worldLength] == GRASS + 1) && (ticks[0] == 0))
-						{
-							WorldData[playerPos + worldLength] = DIRT + 1;
-							ticks[0] = 120;
-						}
-					}
-					playerPos++;
-				}
-				playerPos += worldLength - 21;
-			}
-			playerPos = (playerX + playerY * worldLength);
-			
-			if (health < 1)
-			{
-				gfx_SetColor(148);
-				gfx_FillRectangle(80, 200, 160, 20);
-				gfx_SetTextScale(2, 2);
-				gfx_PrintStringXY("RESPAWN", 84, 204);
-				gfx_BlitBuffer();
-				while (!(kb_IsDown(kb_Key2nd)));
-				WorldEngine();
-			}
-
-			gfx_Rectangle(curX, curY, 16, 16);
-			//hotbar
-			for (x = 0; x < 5; x++)
-			{
-				if (x == hotbarSel)
-				{
-					gfx_SetColor(5);
-				}
-				else
-				{
-					gfx_SetColor(0);
-				}
-				gfx_Rectangle(117 + (x * 18), 220, 18, 18);
-				if (hotbar[x] != 0)
-				{
-					gfx_TransparentSprite(sprites[hotbar[x]], 118 + (x * 18), 221);
-				}
-				else
-				{
-					gfx_SetColor(181);
-					gfx_FillRectangle(118 + (x * 18), 221, 16, 16);
-				}
-			}
-			if (gamemode != 1)
-			{
-				// health bar (hearts)
-				i = 0;
-				for (x = 5; x < 5 + 9 * 9; x += 9)
-				{
-					if (i < health)
-						gfx_TransparentSprite(heart_full, x, 5);
-					if (i >= health)
-						gfx_TransparentSprite(heart_empty, x, 5);
-						if ((i == health) && (!(health % 2)))
-							gfx_TransparentSprite(heart_half, x, 5);
-					i++;
-				}
-				// hunger bar
-				i = 18;
-				for (x = 220; x < 220 + 9 * 9; x += 9)
-				{
-					if (i < hunger)
-						gfx_TransparentSprite(hunger_full, x, 5);
-					if (i >= hunger)
-						gfx_TransparentSprite(hunger_empty, x, 5);
-					if ((i == hunger) && (!(hunger % 2)))
-						gfx_TransparentSprite(hunger2, x, 5);
-					i--;
-				}
-				// exp bar
-				gfx_SetColor(6);
-				gfx_FillRectangle(60, 202, 15 * 6, 5);
-				gfx_SetColor(3);
-				i = 0;
-				for (x = 60; x < 60 + 15 * 6; x += 6)
-				{
-					if (i < exp)
-					{
-						gfx_FillRectangle(x, 202, 3, 3);
-					}
-					i++;
-				}
-				gfx_SetColor(32);
-			}
-			gfx_TransparentSprite(Head_1, 16 * 9 + 3, 16 * 5 + 16);
-			gfx_TransparentSprite(Body_1, 16 * 9 + 5, 16 * 5 + 24);
-			gfx_TransparentSprite(Leg_1, 16 * 9 + 5, 16 * 5 + 35);
-			//memcpy(tempSpr, Leg_1, 14 * 14);
-			//gfx_RotatedScaledTransparentSprite_NoClip(Head_1, 16 * 9 + 2, 16 * 5 + 14, 0, 64);
-			//gfx_RotatedScaledTransparentSprite_NoClip(Body_1, 16 * 9 + 4, 16 * 5 + 22, 0, 64);
-			//gfx_RotatedScaledTransparentSprite_NoClip(Arm_1, 16 * 9 + 4, 16 * 5 + 22, 256 - angle, 64);
-			//gfx_RotatedScaledTransparentSprite_NoClip(tempSpr, 16 * 9 + 4, 16 * 5 + 33, angle, 64);
-		}
-
-		
-		if (kb_IsDown(kb_KeyClear))
-			break;
-
-		if (kb_IsDown(kb_KeyYequ))
-		{
-			hotbarSel = 0;
-			ticks[0] = 1;
-		}
-		if (kb_IsDown(kb_KeyWindow))
-		{
-			hotbarSel = 1;
-			ticks[0] = 1;
-		}
-		if (kb_IsDown(kb_KeyZoom))
-		{
-			hotbarSel = 2;
-			ticks[0] = 1;
-		}
-		if (kb_IsDown(kb_KeyTrace))
-		{
-			hotbarSel = 3;
-			ticks[0] = 1;
-		}
-		if (kb_IsDown(kb_KeyGraph))
-		{
-			hotbarSel = 4;
-			ticks[0] = 1;
-		}
-		if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0) && (hotbar[hotbarSel] != 0) && ((WorldData[curPos - 1] != 0) || (WorldData[curPos + 1] != 0) || (WorldData[curPos - worldLength] != 0) || (WorldData[curPos + worldLength] != 0)))
-		{
-			delay(100);
-			WorldData[curPos] = hotbar[hotbarSel] + 1;
-			BlockData[curPos] = 0;
-			if (hotbar[hotbarSel] == BEDBACK) WorldData[curPos + 1] = BEDFRONT + 1;
-			if (hotbar[hotbarSel] == BEDFRONT) WorldData[curPos - 1] = BEDBACK + 1;
-			ticks[0] = 1;
-		}
-		if (kb_IsDown(kb_KeyDel) && (WorldData[curPos] != 0))
-		{
-			delay(100);
-			if (WorldData[curPos] == BEDBACK) WorldData[curPos + 1] = 0;
-			if (WorldData[curPos] == BEDFRONT) WorldData[curPos - 1] = 0;
-			WorldData[curPos] = 0;
-			ticks[0] = 1;
-		}
-		if (kb_IsDown(kb_KeyGraphVar))
-		{
-			/* inventory */
-			creativeInventory();
-			ticks[0] = 1;
-		}
-		curX = curX + (16 * (kb_IsDown(kb_KeyStat) && (curX < 320)));
-		curX = curX - (16 * (kb_IsDown(kb_KeyAlpha) && (curX > 0)));
-		curPos = curPos + (kb_IsDown(kb_KeyStat) && (curX < 320));
-		curPos = curPos - (kb_IsDown(kb_KeyAlpha) && (curX > 0));
-		if ((kb_IsDown(kb_KeyAlpha)) || (kb_IsDown(kb_KeyStat)))
-		{
-			delay(100);
-			ticks[0] = 1;
-		}
-		curY = curY + (16 * (kb_IsDown(kb_KeyApps) && (curY < 240)));
-		curY = curY - (16 * (kb_IsDown(kb_KeyMode) && (curY > 0)));
-		curPos = curPos + (worldLength * (kb_IsDown(kb_KeyApps) && (curY < 240)));
-		curPos = curPos - (worldLength * (kb_IsDown(kb_KeyMode) && (curY > 0)));
-		if ((kb_IsDown(kb_KeyApps)) || (kb_IsDown(kb_KeyMode)))
-		{
-			delay(100);
-			ticks[0] = 1;
-		}
-
-		if (curX <= 0) curX += 16;
-		if (curX >= 320) curX -= 16;
-		if (curY <= 0) curY += 16;
-		if (curY >= 240) curY += 16;
-
-		if ((kb_IsDown(kb_KeyLeft)) && (playerX > 0))
-		{
-			ticks[0] = 1;
-			if (scrollX == 0)
-			{
-				scrollX = -16;
-				posX--;
-				playerX--;
-				curPos--;
-				curX -= 16;
-			}
-			scrollX += 2;
-			curX += 2;
-		}
-		if ((kb_IsDown(kb_KeyRight)) && (playerX < worldLength - 10))
-		{
-			ticks[0] = 1;
-			if (scrollX == -16)
-			{
-				scrollX = 0;
-				posX++;
-				playerX++;
-				curPos++;
-				curX += 16;
-			}
-			scrollX -= 2;
-			curX -= 2;
-		}
-
-		gfx_SetTextFGColor(0);
-		gfx_SetTextXY(30, 20);
-		gfx_PrintInt(seed, 1);
-		gfx_SetTextXY(30, 40);
-		gfx_PrintInt(256 - playerY, 1);
-		gfx_SetTextFGColor(254);
-
-
-		//if (timer != 0) timer++;
-		//if (timer > 8) timer = 0;
-		
-		//if (kb_IsDown(kb_KeyUp) && (timer < 4)) timer = 0;
-
-		if (kb_IsDown(kb_KeyVars))
-		{
-			gfx_SetTextFGColor(32);
-			
-			timer = 3;
-			temptimer = 0;
-			ticks[0] = 1;
-			delay(100);
-		}
-		if (timer == 2) {
-			temptimer++;
-			if (flymode == 1)
-			gfx_PrintStringXY("Flying mode toggled to On", 4, 20);
-			if (flymode == 0)
-			gfx_PrintStringXY("Flying mode toggled to Off", 4, 20);
-			gfx_BlitBuffer();
-			if (temptimer > 100)
-			{
-				temptimer = 0;
-				timer = 0;
-				ticks[0] = 1;
-			}
-		}
-		if ((timer == 3) && (scrollX < 2))
-		{
-			flymode = (flymode == 0);
-			timer = 2;
-		}
-		if (flymode == 1) jump = 0;
-
-		if ((kb_IsDown(kb_KeyUp)) && (jump == 0) && (playerY > 0) && (WorldData[ playerX + 9 + ((playerY + 7) * worldLength) ] == 0))
-		{
-			ticks[0] = 1;
-			//scrollY = 0;
-			playerY--;
-			curPos -= worldLength;
-			jump = 1;
-		}
-		//swimming up in water...
-		if ((kb_IsDown(kb_KeyUp)) && (WorldData[ playerX + 9 + ((playerY + 7) * worldLength) ] == WATER + 1))
-		{
-			ticks[0] = 1;
-			scrollY += 4;
-			curY += 4;
-			if (scrollY > -1)
-			{
-				scrollY = -16;
-				playerY--;
-				curPos -= worldLength;
-				curY -= 16;
-			}
-		}
-		if ((kb_IsDown(kb_KeyDown)) && (playerY < worldHeight) && (WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == 0))
-		{
-			ticks[0] = 1;
-			if (flymode == 1)
-			{
-				scrollY -= 4;
-				curY -= 4;
-			}
-			if (scrollY < -15)
-			{
-				scrollY = 0;
-				playerY++;
-				curPos += worldLength;
-				curY += 16;
-			}
-		}
-
-		//gravity, water, and lava (swimming? Don't swim in Lava!)...
-		
-		if ((WorldData[ playerX + 9 + ((playerY + 8) * worldLength) ] == WATER + 1) && (!kb_IsDown(kb_KeyUp)))
-		{
-			ticks[0] = 1;
-			scrollY -= 4;
-			curY -= 4;
-			if (scrollY < -15)
-			{
-				scrollY = 0;
-				playerY++;
-				curPos += worldLength;
-				curY += 16;
-				jump = 0;
-			}
-		}
-
-		if (timeofday % 6000) ticks[0] = 1;
-		timeofday++;
-		gfx_BlitBuffer();
-	}
-
-	//save the world data, playerX, playerY, playerPos, curPos, curX, curY, timeofday, etc...
-	world_file = "        ";
-	memcpy(world_file, worldNameStr, 8);
-
-	dbg_sprintf(dbgout, "%s", world_file);
-
-	if (appvar = ti_Open(world_file, "w"))
-	{
-		int world_offset;
-		ti_Write("MCCESV", 6, 1, appvar);
-		ti_Write((void *)0xFF0000, 3, 1, appvar); //this is overwritten later
-		ti_Write(&worldLength, 3, 1, appvar);
-		ti_Write(&worldHeight, 3, 1, appvar);
-		ti_Write(&flymode, 3, 1, appvar);
-		ti_Write(&gamemode, 3, 1, appvar);
-		ti_Write(&scrollX, 3, 1, appvar);
-		ti_Write(&scrollY, 3, 1, appvar);
-		ti_Write(&playerX, 3, 1, appvar);
-		ti_Write(&playerY, 3, 1, appvar);
-		ti_Write(&playerPos, 3, 1, appvar);
-		ti_Write(&curPos, 3, 1, appvar);
-		ti_Write(&curX, 3, 1, appvar);
-		ti_Write(&curY, 3, 1, appvar);
-		ti_Write(&timeofday, 3, 1, appvar);
-		ti_Write(&hotbarSel, 3, 1, appvar);
-		ti_Write(&hotbar, 5, 3, appvar);
-		ti_Write(&health, 3, 1, appvar);
-		ti_Write(&hunger, 3, 1, appvar);
-		ti_Write(&exp, 3, 1, appvar);
-		world_offset = ti_Tell(appvar);
-		ti_Seek(6, SEEK_SET, appvar);
-		ti_Write(&world_offset, 3, 1, appvar);
-		ti_Seek(world_offset, SEEK_SET, appvar);
-		compressAndWrite(&WorldData, worldLength * worldHeight, appvar);
-		ti_SetArchiveStatus(1, appvar);
-		ti_Close(appvar);
-	}
-
-	dbg_sprintf(dbgout, "%u", appvar);
-
-	delay(100);
-}
-
-
-void creativeInventory(void)
-{
-	int24_t tab, scroll, redraw, selX, selY, posB, oldBlock, newBlock, timer, selXb, selYb, selPos, i, maxSize;
-	char *names[4] = { "Nature", "Building", "Redstone", "Tools" };
-	gfx_FillScreen(dayColors[timeofday / 6000]);
-	gfx_SetTextFGColor(0);
-	LoadBlocks("MCEDEFT");
-	selX = 10;
-	selY = 30;
-	posB = 1;
-	tab = 0;
-	oldBlock = 0;
-	newBlock = 0;
-	timer = 0;
-	redraw = 1;
-	while (!(kb_IsDown(kb_KeyClear)))
-	{
-		if (redraw == 1)
-		{
-			timer = 0;
-			redraw = 0;
-			maxSize = typesvalues[tab];
 			gfx_SetColor(181);
-			gfx_FillCircle(10, 10, 5);
-			gfx_FillCircle(309, 10, 5);
-			gfx_FillCircle(10, 229, 5);
-			gfx_FillCircle(309, 229, 5);
-			gfx_FillRectangle(10, 5, 300, 230);
-			gfx_FillRectangle(5, 10, 310, 220);
-			i = (tab != 0);
-			pos = 14 + ((tab != 0) * 20);
-			for (x = pos; x < pos + (3 * 82); x += 82)
-			{
-				if (tab != i)
-					gfx_SetColor(148);
-				if (tab == i)
-					gfx_SetColor(181);
-				gfx_FillRectangle(x, 11, 82, 20);
-				gfx_SetColor(0);
-				gfx_Rectangle(x, 11, 82, 20);
-				gfx_PrintStringXY(names[i], x + 18, 16);
-				if (i == 0)
-					gfx_TransparentSprite(sprites[natureBlocks[0]], x + 1, 12);
-				if (i == 1)
-					gfx_TransparentSprite(sprites[buildingBlocks[0]], x + 1, 12);
-				if (i == 2)
-					gfx_TransparentSprite(sprites[redstoning[0]], x + 1, 12);
-				if (i == 3)
-					gfx_TransparentSprite(sprites[toolsEtc[0]], x + 1, 12);
-				i++;
-			}
-			gfx_SetColor(148);
-			if (tab < 1) gfx_FillRectangle(x, 11, 20, 20);
-			if (tab > 0) gfx_FillRectangle(14, 11, 20, 20);
+			gfx_FillRectangle(50, y, 220, 16);
 			gfx_SetColor(0);
-			if (tab < 1) gfx_Rectangle(x, 11, 20, 20);
-			if (tab > 0) gfx_Rectangle(14, 11, 20, 20);
-			gfx_SetColor(4);
-			if (tab < 1) gfx_FillTriangle(x + 6, 15, x + 6, 25, x + 14, 20);
-			if (tab > 0) gfx_FillTriangle(28, 15, 28, 25, 19, 20);
-			pos = 0;
-			
-			gfx_SetTextFGColor(0);
-			for (y = 30; y < 10 * 18; y += 18)
-			{
-				for (x = 10; x < 10 * 28; x += 18)
-				{
-					gfx_SetColor(148);
-					gfx_FillRectangle(x, y, 18, 18);
-					gfx_SetColor(0);
-					gfx_Rectangle(x, y, 18, 18);
-					if (pos < typesvalues[tab])
-					{
-						if (tab == 0)
-							gfx_TransparentSprite(sprites[natureBlocks[pos++]], x + 1, y + 1);
-						if (tab == 1)
-							gfx_TransparentSprite(sprites[buildingBlocks[pos++]], x + 1, y + 1);
-						if (tab == 2)
-							gfx_TransparentSprite(sprites[redstoning[pos++]], x + 1, y + 1);
-						if (tab == 3)
-							gfx_TransparentSprite(sprites[toolsEtc[pos++]], x + 1, y + 1);
-					}
-				}
-			}
-			//hotbar
-			for (x = 0; x < 5; x++)
-			{
-				if (x == hotbarSel)
-				{
-					gfx_SetColor(5);
-				}
-				else
-				{
-					gfx_SetColor(0);
-				}
-				gfx_Rectangle(117 + (x * 18), 210, 18, 18);
-				if (hotbar[x] != 0)
-				{
-					gfx_TransparentSprite(sprites[hotbar[x]], 118 + (x * 18), 211);
-				}
-				else
-				{
-					gfx_SetColor(148);
-					gfx_FillRectangle(118 + (x * 18), 211, 16, 16);
-				}
-			}
-			if (newBlock != 0) gfx_TransparentSprite(sprites[newBlock], selX + 8, selY + 8);
-			//cursor
-			gfx_SetColor(254);
-			gfx_FillRectangle(selX + 3, selY + 8, 5, 2);
-			gfx_FillRectangle(selX + 10, selY + 8, 5, 2);
-			
-			gfx_FillRectangle(selX + 8, selY + 3, 2, 5);
-			gfx_FillRectangle(selX + 8, selY + 10, 2, 5);
-
-			gfx_BlitBuffer();
+			gfx_Rectangle(50, y, 220, 16);
+			gfx_Rectangle(51, y + 1, 218, 14);
 		}
+		gfx_SetColor(148);
+		gfx_FillRectangle(0, 0, 320, 12);
+		DrawCenteredText(MenuElements[11], 160, 2);
+		DrawCenteredText(NewWorldMenuElements[0], 160 - gfx_GetStringWidth(worldNameStr) / 2, 64);
+		gfx_PrintStringXY(worldNameStr, 162 - gfx_GetStringWidth(worldNameStr) / 2 + gfx_GetStringWidth(NewWorldMenuElements[0]) / 2, 64);
+		DrawCenteredText(NewWorldMenuElements[1], 160 - gfx_GetStringWidth(seedStr) / 2, 84);
+		gfx_PrintStringXY(seedStr, 162 - gfx_GetStringWidth(seedStr) / 2 + gfx_GetStringWidth(NewWorldMenuElements[1]) / 2, 84);
+		DrawCenteredText(NewWorldMenuElements[2], 160 - gfx_GetStringWidth(gamemodeStr[gamemode]) / 2, 104);
+		gfx_PrintStringXY(gamemodeStr[gamemode], 162 - gfx_GetStringWidth(gamemodeStr[gamemode]) / 2 + gfx_GetStringWidth(NewWorldMenuElements[2]) / 2, 104);
+		DrawCenteredText(NewWorldMenuElements[3], 160 - gfx_GetStringWidth(worldSizeStr[worldSize]) / 2, 124);
+		gfx_PrintStringXY(worldSizeStr[worldSize], 162 - gfx_GetStringWidth(worldSizeStr[worldSize]) / 2 + gfx_GetStringWidth(NewWorldMenuElements[3]) / 2, 124);
+		DrawCenteredText(NewWorldMenuElements[4], 160 - gfx_GetStringWidth(togglesOnOff[cheats]) / 2, 144);
+		gfx_PrintStringXY(togglesOnOff[cheats], 162 - gfx_GetStringWidth(togglesOnOff[cheats]) / 2 + gfx_GetStringWidth(NewWorldMenuElements[4]) / 2, 144);
+		DrawCenteredText(NewWorldMenuElements[5], 160 - gfx_GetStringWidth(worldTypesStr[worldType]) / 2, 164);
+		gfx_PrintStringXY(worldTypesStr[worldType], 162 - gfx_GetStringWidth(worldTypesStr[worldType]) / 2 + gfx_GetStringWidth(NewWorldMenuElements[5]) / 2, 164);
+		DrawCenteredText(NewWorldMenuElements[6], 160, 184);
+		DrawCenteredText(NewWorldMenuElements[7], 160, 204);
+		gfx_SetColor(254);
+		gfx_Rectangle(50, CursorY, 220, 16);
+		gfx_Rectangle(51, CursorY + 1, 218, 14);
+		gfx_BlitBuffer();
 		kb_Scan();
-
-		if (kb_IsDown(kb_KeyYequ) && (tab > 0))
+		if (kb_IsDown(kb_KeyUp) && (CursorY > 60))
 		{
-			tab--;
+			CursorY -= 20;
 			redraw = 1;
-			delay(100);
 		}
-		if (kb_IsDown(kb_KeyGraph) && (tab < 3))
+		if (kb_IsDown(kb_KeyDown) && (CursorY < 200))
 		{
-			tab++;
+			CursorY += 20;
 			redraw = 1;
-			delay(100);
 		}
-
-		if (selY == 210)
+		if (kb_IsDown(kb_Key2nd))
 		{
-			if (kb_IsDown(kb_Key2nd))
+			redraw = 1;
+			if (CursorY == 60)
 			{
-				dbg_sprintf(dbgout, "%u", newBlock);
-				oldBlock = hotbar[posB];
-				hotbar[posB] = newBlock;
-				newBlock = oldBlock;
-				oldBlock = 0;
-				redraw = 1;
+				input(worldNameStr, 40);
 				delay(100);
 			}
-		}
-		else
-		{
-			if (kb_IsDown(kb_Key2nd) && (newBlock != 0))
+			if (CursorY == 80)
 			{
-
-				newBlock = oldBlock;
-				redraw = 1;
+				input(seedStr, 40);
 				delay(100);
 			}
-			if (kb_IsDown(kb_Key2nd) && (newBlock != 0) && (posB > maxSize))
+			if (CursorY == 100)
 			{
+				gamemode++;
+				if (gamemode > 2)
+					gamemode = 0;
+			}
+			if (CursorY == 120)
+			{
+				worldSize++;
+				if (worldSize > 2)
+					worldSize = 0;
+			}
+			if (CursorY == 140)
+			{
+				cheats = (cheats == 0);
+			}
+			if (CursorY == 160)
+			{
+				worldType++;
+				if (worldType > 2)
+				{
+					worldType = 0;
+				}
+			}
+			if (CursorY == 180) {
+				MoreWorldOptions();
+				CursorY = 180;
+			}
+			if (CursorY == 200)
+			{
+				if (worldSize == 0)
+				{
+					MaxX = 16 * 4;
+					MaxY = 16 * 4;
+				}
+				if (worldSize == 1)
+				{
+					MaxX = 16 * 7;
+					MaxY = 16 * 7;
+				}
+				if (worldSize == 2)
+				{
+					MaxX = 16 * 9;
+					MaxY = 16 * 9;
+				}
+				// supposed to take the first 8 letters of the worldName string and copy to world_file
+				memcpy(world_file, worldNameStr, 8);
 
-				newBlock = 0;
+				Generator();
+				Game();
+				delay(200);
 				redraw = 1;
-				delay(100);
-			}
-
-			if (kb_IsDown(kb_Key2nd) && (newBlock == 0) && (posB < maxSize + 1))
-			{
-				if (tab == 0)
-					newBlock = natureBlocks[posB - 1];
-				if (tab == 1)
-					newBlock = buildingBlocks[posB - 1];
-				if (tab == 2)
-					newBlock = redstoning[posB - 1];
-				if (tab == 3)
-					newBlock = toolsEtc[posB - 1];
-				dbg_sprintf(dbgout, "%u", newBlock);
-				redraw = 1;
-				delay(100);
-			}
-		}
-
-		if (selY < 9 * 18)
-		{
-			if ((kb_IsDown(kb_KeyLeft)) && (selX > 10))
-			{
-				selX -= 18;
-				posB--;
-				redraw = 1;
-				delay(80);
-			}
-			if ((kb_IsDown(kb_KeyRight)) && (selX < 14 * 18))
-			{
-				selX += 18;
-				posB++;
-				redraw = 1;
-				delay(80);
-			}
-		}
-		else
-		{
-			if (kb_IsDown(kb_KeyLeft) && (selX > 117))
-			{
-				posB--;
-				selX -= 18;
-				redraw = 1;
-				delay(80);
-			}
-			if (kb_IsDown(kb_KeyRight) && (selX < 189))
-			{
-				posB++;
-				selX += 18;
-				redraw = 1;
-				delay(80);
-			}
-		}
-
-		if (kb_IsDown(kb_KeyUp) && (selY == 210))
-		{
-			selX = selXb;
-			selY = selYb - 18;
-			posB = selPos - 15;
-			redraw = 1;
-			delay(80);
-		}
-
-		if ((kb_IsDown(kb_KeyUp)) && (selY > 30) && (selY < 10 * 18))
-		{
-			selY -= 18;
-			posB -= 15;
-			redraw = 1;
-			delay(80);
-		}
-		if (kb_IsDown(kb_KeyDown))
-		{
-			if (selY < 210)
-			{
-				selY += 18;
-				posB += 15;
-				redraw = 1;
-				delay(80);
-			}
-			if (selY == 30 + 9 * 18)
-			{
-				selXb = selX;
-				selYb = selY;
-				selPos = posB;
-				selX = 117;
-				selY = 210;
-				posB = 0;
-				redraw = 1;
-				delay(80);
+				break;
 			}
 		}
 	}
-
-	redraw = 1;
-	delay(200);
+	delay(100);
+	kb_Scan();
+	playMenu();
 }
 
-void drawDirtBackground(int scroll)
-{
-	int scrollY, test;
-	for (test = 0; test < 20; test++)
+void MoreWorldOptions(void) {
+	CursorY = 60;
+	while (!(kb_IsDown(kb_KeyClear)) && !(kb_IsDown(kb_Key2nd) && CursorY == 140))
 	{
-		for (scrollY = scroll; scrollY < 256; scrollY += 16)
+		DrawDirtBackground(0);
+		for (y = 60; y < 160; y += 20)
 		{
-			gfx_TransparentSprite(sprites[3], test * 16, scrollY - 16);
+			gfx_SetColor(181);
+			gfx_FillRectangle(50, y, 220, 16);
+			gfx_SetColor(0);
+			gfx_Rectangle(50, y, 220, 16);
+			gfx_Rectangle(51, y + 1, 218, 14);
+		}
+		gfx_SetColor(148);
+		gfx_FillRectangle(0, 0, 320, 12);
+		DrawCenteredText(NewWorldMenuElements[6], 160, 2);
+		DrawCenteredText(NewWorldMenuElements[8], 160 - gfx_GetStringWidth(togglesOnOff[genTrees]) / 2, 64);
+		gfx_PrintStringXY(togglesOnOff[genTrees], 162 - gfx_GetStringWidth(togglesOnOff[genTrees]) / 2 + gfx_GetStringWidth(NewWorldMenuElements[8]) / 2, 64);
+		DrawCenteredText(NewWorldMenuElements[9], 160 - gfx_GetStringWidth(togglesOnOff[genFlowers]) / 2, 84);
+		gfx_PrintStringXY(togglesOnOff[genFlowers], 162 - gfx_GetStringWidth(togglesOnOff[genFlowers]) / 2 + gfx_GetStringWidth(NewWorldMenuElements[9]) / 2, 84);
+		DrawCenteredText(NewWorldMenuElements[10], 160 - gfx_GetStringWidth(togglesOnOff[genVillages]) / 2, 104);
+		gfx_PrintStringXY(togglesOnOff[genVillages], 162 - gfx_GetStringWidth(togglesOnOff[genVillages]) / 2 + gfx_GetStringWidth(NewWorldMenuElements[10]) / 2, 104);
+		DrawCenteredText(NewWorldMenuElements[11], 160 - gfx_GetStringWidth(togglesOnOff[genCaves]) / 2, 124);
+		gfx_PrintStringXY(togglesOnOff[genCaves], 162 - gfx_GetStringWidth(togglesOnOff[genCaves]) / 2 + gfx_GetStringWidth(NewWorldMenuElements[11]) / 2, 124);
+		DrawCenteredText(NewWorldMenuElements[12], 160, 144);
+		gfx_SetColor(254);
+		gfx_Rectangle(50, CursorY, 220, 16);
+		gfx_Rectangle(51, CursorY + 1, 218, 14);
+		gfx_BlitBuffer();
+		kb_Scan();
+		if (kb_IsDown(kb_KeyUp) && (CursorY > 60)) CursorY -= 20;
+		if (kb_IsDown(kb_KeyDown) && (CursorY < 140)) CursorY += 20;
+		if (kb_IsDown(kb_Key2nd)) {
+			delay(100);
+			if (CursorY == 60) genTrees = (genTrees == 0);
+			if (CursorY == 80) genFlowers = (genFlowers == 0);
+			if (CursorY == 100) genVillages = (genVillages == 0);
+			if (CursorY == 120) genCaves = (genCaves == 0);
+		}
+	}
+	delay(100);
+	kb_Scan();
+}
+
+void DrawDirtBackground(int16_t scrollVal) {
+	for (x = 0; x < 320; x += 16) {
+		for (y = 0 - scrollVal; y < 240 + scrollVal; y += 16) {
+			gfx_TransparentSprite(BlockTextures[77], x, y);
 		}
 	}
 }
 
-void findAppvars(const char *str)
-{
-
-#define WORLD_IDENTIFIER str
-// we have a limit of 10 appvars
-#define WORLD_COUNT_LIMIT 10
-	char *foundAppvar;
-	void *searchPosition; // used by ti_Detect()
-	// code for world scanning given by KryptonicDragon via cemetech.net
-	// if you define this somewhere global instead of just in this function, you can also
-	// use "WORLD_IDENTIFIER" in the code that saves worlds.
-	//
-	// also, this needs to be unique to your program so other programs don't mistake
-	// your worlds for their appvars (or vice versa), but it also shouldn't be too long
-	// since that slows down the search and takes up more space on everyone's calc (remember
-	// that *every single* world appvar has this at the beginning of its data)
-
-	// documentation states we must set this to NULL to start the search
-	searchPosition = NULL;
-	foundCount = 0;
-
-	// note how the next line uses = and not ==, because we want to assign what ti_Detect()
-	// returns into the foundAppvar variable. = is for assigning, == is for checking equality
-	//
-	// this loop will keep running so long as ti_Detect() find something. When it's done,
-	// ti_Detect() will return NULL, which will get put into foundAppvar, and then
-	// the condition "NULL != (NULL)" will become false and end the loop
-	//
-	// this loop also stops if we find too many programs (which is set by the "WORLD_COUNT_LIMIT"
-	// define.
-	/*
-		while (foundCount < WORLD_COUNT_LIMIT && NULL != (foundAppvar = ti_Detect(&searchPosition, WORLD_IDENTIFIER))) {
-			// now the foundAppvar variable has a C string of the name of an appvar 
-			// that was found, and we know for sure it's a MC2D world.
-				memcpy(WorldsList[foundCount], foundAppvar, 9);
-				foundCount++;
-		}*/
-	for (;;)
-	{
-		foundAppvar = ti_Detect(&searchPosition, WORLD_IDENTIFIER);
-		if (foundAppvar == NULL)
-		{
-			break;
-		}
-
-		memcpy(WorldsList[foundCount++], foundAppvar, 9);
-		if (foundCount >= WORLD_COUNT_LIMIT)
-		{
-			break;
-		}
-	}
-}
-
-//Compress data via zx7 compression
+// Compress data via zx7 compression
 void compressAndWrite(void *data, int len, ti_var_t fp)
 {
 	//	int i, j, k, num, num_i, new;
@@ -1628,9 +1918,9 @@ void compressAndWrite(void *data, int len, ti_var_t fp)
 	//	void *back_buffer = (void*)0xD52C00;
 	//	uint8_t *ptr;
 	int new_len;
-	*((int *)0xE30010) = 0xD40000; //force the lcd to use the first half of VRAM so we can use the second half.
+	*((int *)0xE30010) = 0xD40000; // force the lcd to use the first half of VRAM so we can use the second half.
 	gfx_SetDrawScreen();
-	drawDirtBackground(0);
+	DrawDirtBackground(0);
 	gfx_SetTextFGColor(0xDF);
 	gfx_PrintStringXY("Saving World...", 113, 110);
 
@@ -1661,7 +1951,7 @@ void compressAndWrite(void *data, int len, ti_var_t fp)
 		while (k>>=1){
 			if (b & k){
 				while (b) {
-					
+
 				}
 			}
 		}
@@ -1670,7 +1960,55 @@ void compressAndWrite(void *data, int len, ti_var_t fp)
 
 	zx7_Compress((void *)0xD52C00, data, &new_len, len);
 	ti_Write((void *)0xD52C00, new_len, 1, fp);
-	y = 125;
-	gfx_End();
-	MainMenu();
+	main();
+}
+
+void findAppvars(const char *str)
+{
+#define WORLD_IDENTIFIER str
+// we have a limit of 10 appvars
+#define WORLD_COUNT_LIMIT 10
+	char *foundAppvar;
+	void *searchPosition; // used by ti_Detect()
+	// code for world scanning given by KryptonicDragon via cemetech.net
+	// if you define this somewhere global instead of just in this function, you can also
+	// use "WORLD_IDENTIFIER" in the code that saves worlds.
+	//
+	// also, this needs to be unique to your program so other programs don't mistake
+	// your worlds for their appvars (or vice versa), but it also shouldn't be too long
+	// since that slows down the search and takes up more space on everyone's calc (remember
+	// that *every single* world appvar has this at the beginning of its data)
+
+	// documentation states we must set this to NULL to start the search
+	searchPosition = NULL;
+	foundCount = 0;
+
+	// note how the next line uses = and not ==, because we want to assign what ti_Detect()
+	// returns into the foundAppvar variable. = is for assigning, == is for checking equality
+	//
+	// this loop will keep running so long as ti_Detect() find something. When it's done,
+	// ti_Detect() will return NULL, which will get put into foundAppvar, and then
+	// the condition "NULL != (NULL)" will become false and end the loop
+	//
+	// this loop also stops if we find too many programs (which is set by the "WORLD_COUNT_LIMIT"
+	// define.
+	/*
+		while (foundCount < WORLD_COUNT_LIMIT && NULL != (foundAppvar = ti_Detect(&searchPosition, WORLD_IDENTIFIER))) {
+			// now the foundAppvar variable has a C string of the name of an appvar
+			// that was found, and we know for sure it's a MC2D world.
+				memcpy(WorldsList[foundCount], foundAppvar, 9);
+				foundCount++;
+		}*/
+	for (;;)
+	{
+		foundAppvar = ti_Detect(&searchPosition, WORLD_IDENTIFIER);
+		if (foundAppvar == NULL)
+		{
+			break;
+		}
+
+		memcpy(WorldsList[foundCount++], foundAppvar, 9);
+		if (foundCount >= WORLD_COUNT_LIMIT)
+			break;
+	}
 }
